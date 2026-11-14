@@ -16,6 +16,14 @@ Elegís una vez el tipo de proyecto (Avatar o World), la versión de Unity, los 
 
 ![Catálogo de paquetes](docs/screenshots/catalogo.png)
 
+## Descarga
+
+1. Bajá `MochiSprout-v1.0.0-windows.zip` desde [Releases](https://github.com/AkiMoriDev/MochiSprout/releases/latest).
+2. Descomprimilo en cualquier carpeta.
+3. Abrí `MochiSprout.exe`.
+
+No necesita instalación.
+
 ## Requisitos
 
 - Windows 10 u 11 (x64).
@@ -51,27 +59,6 @@ El script usa solo C# 4 y accede por reflexión a las APIs del Editor que cambia
 | Estado de importación de cada proyecto | `ProjectSettings/MochiSproutImportState.json` dentro del proyecto de Unity |
 
 Si venís de VCC Preset Studio (el nombre anterior de la app), la primera vez que abras MochiSprout se copian tus datos desde `%LocalAppData%\VCCPresetStudio` (la carpeta anterior no se borra). Los proyectos de Unity preparados con la versión anterior se actualizan solos al volver a prepararlos: se reemplaza el importador viejo y se conserva su registro de importaciones.
-
-## Compilar desde el código
-
-Necesitás el SDK de .NET 8 (la versión exacta está fijada en `global.json`).
-
-```powershell
-dotnet build .\MochiSprout\MochiSprout.csproj -c Release
-dotnet publish .\MochiSprout\MochiSprout.csproj -c Release -o .\publish
-```
-
-También podés abrir `MochiSprout.sln` en Visual Studio 2022 con la carga de trabajo **Desarrollo de escritorio de .NET**.
-
-### Pruebas
-
-```powershell
-# Controlador, persistencia, catálogo, exportación y vistas
-dotnet run --project .\Verification\Verification.csproj -c Release
-
-# Importador de .unitypackage con un Unity simulado (éxito, fallos, reintentos, archivos movidos, etc.)
-dotnet run --project .\Verification\ImporterHarness\ImporterHarness.csproj -c Release
-```
 
 ## Estructura
 
