@@ -1,0 +1,110 @@
+<Window x:Class="MochiSprout.Views.ExportWindow" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" Title="Exportar a VCC" Width="1000" Height="740" WindowStyle="None" AllowsTransparency="True" Background="Transparent" ShowInTaskbar="False" ResizeMode="NoResize" FontFamily="{StaticResource UiFont}" FontSize="14" Foreground="{StaticResource Ink}" WindowStartupLocation="Manual">
+  <Window.Resources>
+    <DataTemplate x:Key="CheckRow">
+      <Border Background="{StaticResource Surface}" BorderBrush="{StaticResource LineSoft}" BorderThickness="1" CornerRadius="12" Padding="12,10" Margin="0,0,0,8">
+        <DockPanel>
+          <Border x:Name="Dot" Width="22" Height="22" CornerRadius="11" BorderThickness="1.5" Margin="0,0,12,0" VerticalAlignment="Top" Background="#10291f" BorderBrush="#1e4a37">
+            <Path x:Name="Glyph" Data="{StaticResource IcoCheck}" Style="{StaticResource Ico}" Stroke="#5fd39a" Width="11" Height="11"/>
+          </Border>
+          <TextBlock x:Name="Text" Text="{Binding Text}" TextWrapping="Wrap" FontSize="13" Foreground="#c6cfdb" VerticalAlignment="Center"/>
+        </DockPanel>
+      </Border>
+      <DataTemplate.Triggers>
+        <DataTrigger Binding="{Binding Kind}" Value="err">
+          <Setter TargetName="Dot" Property="Background" Value="#331619"/>
+          <Setter TargetName="Dot" Property="BorderBrush" Value="#5a2328"/>
+          <Setter TargetName="Glyph" Property="Data" Value="{StaticResource IcoX}"/>
+          <Setter TargetName="Glyph" Property="Stroke" Value="#ff8080"/>
+          <Setter TargetName="Text" Property="Foreground" Value="#ffc2c2"/>
+        </DataTrigger>
+        <DataTrigger Binding="{Binding Kind}" Value="warn">
+          <Setter TargetName="Dot" Property="Background" Value="#2e2412"/>
+          <Setter TargetName="Dot" Property="BorderBrush" Value="#4f3b18"/>
+          <Setter TargetName="Glyph" Property="Data" Value="{StaticResource IcoAlert}"/>
+          <Setter TargetName="Glyph" Property="Stroke" Value="#f0b35a"/>
+        </DataTrigger>
+      </DataTemplate.Triggers>
+    </DataTemplate>
+  </Window.Resources>
+  <Grid x:Name="OverlayRoot" Background="#B305080C">
+    <Border x:Name="DialogPanel" Style="{StaticResource ModalPanel}" Width="560">
+      <Grid>
+        <Grid.RowDefinitions>
+          <RowDefinition Height="Auto"/>
+          <RowDefinition Height="*"/>
+          <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+        <Border BorderBrush="{StaticResource LineSoft}" BorderThickness="0,0,0,1" Padding="20,12,12,12" MinHeight="60">
+          <DockPanel>
+            <Button x:Name="CloseButton" DockPanel.Dock="Right" Style="{StaticResource IconBtn}" Click="CloseExport" AutomationProperties.Name="Cerrar" ToolTip="Cerrar" IsEnabled="{Binding ExportIsRunning, Converter={StaticResource MatchBool}, ConverterParameter=False}">
+              <Path Data="{StaticResource IcoX}" Style="{StaticResource Ico}" Width="14" Height="14"/>
+            </Button>
+            <Border Width="34" Height="34" CornerRadius="10" Background="{StaticResource AccentSoft}" Margin="0,0,12,0" VerticalAlignment="Center">
+              <Path Data="{StaticResource IcoExport}" Style="{StaticResource Ico}" Stroke="{StaticResource AccentInk}"/>
+            </Border>
+            <StackPanel VerticalAlignment="Center" Margin="0,0,8,0">
+              <TextBlock Text="{Binding ExportTitle}" Style="{StaticResource ModalTitle}" ToolTip="{Binding ExportTitle}"/>
+              <TextBlock Text="Crea una plantilla nueva en VCC. La base oficial no se modifica." Style="{StaticResource ModalSubtitle}"/>
+            </StackPanel>
+          </DockPanel>
+        </Border>
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Background="{StaticResource Surface2}">
+          <StackPanel Margin="20,18">
+            <TextBlock Text="Destino" Style="{StaticResource FieldLabel}"/>
+            <Border Background="{StaticResource Inset}" BorderBrush="{StaticResource LineStrong}" BorderThickness="1" CornerRadius="12" Padding="12,10" Margin="0,0,0,16">
+              <TextBlock Text="{Binding ExportDestination}" FontFamily="{StaticResource MonoFont}" FontSize="12.5" Foreground="#a3aebf" TextWrapping="Wrap"/>
+            </Border>
+            <TextBlock Text="Chequeos previos" Style="{StaticResource FieldLabel}"/>
+            <ItemsControl ItemsSource="{Binding ExportChecks}" ItemTemplate="{StaticResource CheckRow}" Focusable="False"/>
+            <Border CornerRadius="12" Padding="12,10" Margin="0,8,0,0" Background="{StaticResource AccentSoft}" BorderBrush="#1d3a66" BorderThickness="1" Visibility="{Binding ExportPhase, Converter={StaticResource MatchVis}, ConverterParameter=run}">
+              <DockPanel>
+                <ProgressBar DockPanel.Dock="Bottom" Height="4" IsIndeterminate="True" Foreground="#79b0ff" Background="#222b38" BorderThickness="0" Margin="0,10,0,0"/>
+                <TextBlock Text="Copiando la base, fusionando paquetes y preparando el importador…" Foreground="#c4dbff" FontSize="13" TextWrapping="Wrap"/>
+              </DockPanel>
+            </Border>
+            <Border CornerRadius="12" Padding="12,10" Margin="0,8,0,0" Background="#10291f" BorderBrush="#1e4a37" BorderThickness="1" Visibility="{Binding ExportPhase, Converter={StaticResource MatchVis}, ConverterParameter=done}">
+              <DockPanel>
+                <Path Data="{StaticResource IcoCheck}" Style="{StaticResource Ico}" Stroke="#5fd39a" Margin="0,0,10,0" VerticalAlignment="Top"/>
+                <TextBlock Text="{Binding ExportResult}" Foreground="#bdebd3" FontSize="13" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite"/>
+              </DockPanel>
+            </Border>
+            <Border CornerRadius="12" Padding="12,10" Margin="0,8,0,0" Background="#331619" BorderBrush="#5a2328" BorderThickness="1" Visibility="{Binding ExportPhase, Converter={StaticResource MatchVis}, ConverterParameter=fail}">
+              <DockPanel>
+                <Path Data="{StaticResource IcoAlert}" Style="{StaticResource Ico}" Stroke="#ff8080" Margin="0,0,10,0" VerticalAlignment="Top"/>
+                <TextBlock Text="{Binding ExportResult}" Foreground="#ffc2c2" FontSize="13" TextWrapping="Wrap" AutomationProperties.LiveSetting="Assertive"/>
+              </DockPanel>
+            </Border>
+          </StackPanel>
+        </ScrollViewer>
+        <Border Grid.Row="2" BorderBrush="{StaticResource LineSoft}" BorderThickness="0,1,0,0" Padding="20,12,16,12" MinHeight="64">
+          <DockPanel>
+            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+              <Button x:Name="CancelButton" Style="{StaticResource Btn}" Click="CloseExport" Margin="10,0,0,0" IsEnabled="{Binding ExportIsRunning, Converter={StaticResource MatchBool}, ConverterParameter=False}">
+                <Button.Content>
+                  <TextBlock>
+                    <TextBlock.Style>
+                      <Style TargetType="TextBlock">
+                        <Setter Property="Text" Value="Cancelar"/>
+                        <Setter Property="Foreground" Value="#e7ecf3"/>
+                        <Style.Triggers>
+                          <DataTrigger Binding="{Binding ExportPhase}" Value="done">
+                            <Setter Property="Text" Value="Cerrar"/>
+                          </DataTrigger>
+                          <DataTrigger Binding="{Binding ExportPhase}" Value="fail">
+                            <Setter Property="Text" Value="Cerrar"/>
+                          </DataTrigger>
+                        </Style.Triggers>
+                      </Style>
+                    </TextBlock.Style>
+                  </TextBlock>
+                </Button.Content>
+              </Button>
+              <Button Content="Exportar a VCC" Style="{StaticResource BtnPrimary}" Margin="10,0,0,0" Command="{Binding RunExportCommand}" IsEnabled="{Binding ExportCanRun}" Visibility="{Binding ExportPhase, Converter={StaticResource MatchVis}, ConverterParameter=!done}"/>
+            </StackPanel>
+            <TextBlock Text="Guardar y exportar son acciones separadas: el preset ya está guardado." Style="{StaticResource Hint}" VerticalAlignment="Center"/>
+          </DockPanel>
+        </Border>
+      </Grid>
+    </Border>
+  </Grid>
+</Window>

@@ -1,0 +1,54 @@
+# Compilación de .NET
+bin/
+obj/
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+[Aa][Rr][Mm]64/
+*.pdb
+*.dll
+*.exe
+
+# Publicaciones locales (se distribuyen como Releases de GitHub, no en el repositorio)
+publish/
+dist/
+artifacts/
+Aplicacion*/
+MochiSprout-v*/
+*.zip
+
+# Visual Studio / Rider / VS Code
+.vs/
+.idea/
+.vscode/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+*.rsuser
+*.DotSettings.user
+
+# NuGet
+*.nupkg
+*.snupkg
+packages/
+project.lock.json
+project.assets.json
+
+# Pruebas: carpetas temporales y capturas que genera la verificación
+Verification/**/fixtures/
+TestResults/
+*.trx
+
+# Sistema operativo
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+.DS_Store
+
+# Archivos temporales
+*.tmp
+*.log
+*.bak

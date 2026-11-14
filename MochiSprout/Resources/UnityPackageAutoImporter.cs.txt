@@ -1,0 +1,431 @@
+// Generado por MochiSprout. Solo para el Editor de Unity.
+// Pensado para compilar en Unity 2017.4 hasta Unity 6: usa solo C# 4 y APIs de .NET 3.5, y accede por
+// reflexión a las funciones del Editor que no existen en todas las versiones (si faltan, sigue funcionando).
+// Si algo falla, reintenta solo una vez y después avisa con una ventana con opciones para arreglarlo.
+#if UNITY_EDITOR
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Reflection;
+using System.Security.Cryptography;
+using UnityEditor;
+using UnityEngine;
+namespace MochiSprout.Generated
+{
+ [InitializeOnLoad]
+ public static class UnityPackageAutoImporter
+ {
+  [Serializable] public class Manifest { public int schemaVersion; public Entry[] packages; }
+  [Serializable] public class Entry { public string path; public string sha256; }
+  [Serializable] public class ImportRecord { public string key; public string status; public string error; public int attempts; }
+  [Serializable] public class ImportState { public List<ImportRecord> records=new List<ImportRecord>(); }
+
+  private const string Tag="[MochiSprout] ";
+  private const string RelativeManifest="Assets/MochiSprout/Editor/import-manifest.json";
+  private const string RelativeState="ProjectSettings/MochiSproutImportState.json";
+  private const string LegacyState="ProjectSettings/VCCPresetStudioImportState.json";   // VCC Preset Studio
+  private const string RepairHint="Si no se arregla, abrí MochiSprout → Configuración → Presets y respaldos → Activar importación en proyecto existente.";
+  private const int MaxAutomaticAttempts=2;      // primer intento + un reintento automático
+  private const double ConfirmTimeout=90;        // segundos de Editor libre sin que Unity confirme la importación
+  private const double UnconfirmedGrace=3;       // si esta versión de Unity no avisa al terminar
+
+  private static bool stopped;
+  private static bool reloadLocked;
+  private static bool eventsAvailable;
+  private static string activeName;
+  private static string activeKey;
+  private static double activeIdleSince=-1;
+  private static ImportState state;
+  private static double nextCheck;
+  private static readonly Queue<Action> prompts=new Queue<Action>();
+  private static readonly HashSet<string> promptedFallback=new HashSet<string>();
+
+  private static string Root { get { return Path.GetFullPath(Path.Combine(Application.dataPath,"..")); } }
+  private static double Now { get { return EditorApplication.timeSinceStartup; } }
+
+  static UnityPackageAutoImporter()
+  {
+   try
+   {
+    var completed=Subscribe(typeof(AssetDatabase),"importPackageCompleted","OnCompleted");
+    Subscribe(typeof(AssetDatabase),"importPackageFailed","OnFailed");
+    Subscribe(typeof(AssetDatabase),"importPackageCancelled","OnCancelled");
+    eventsAvailable=completed;
+    Subscribe(typeof(EditorApplication),"quitting","OnQuitting");
+   }
+   catch(Exception ex){eventsAvailable=false;Debug.LogWarning(Tag+"No se pudieron conectar los avisos de importación de Unity: "+ex.Message);}
+   EditorApplication.update+=Tick;
+   // Solo se suscribe acá. Las operaciones sobre assets corren cuando el Editor queda libre.
+   nextCheck=Now+2;
+  }
+
+  // ---------- Menú ----------
+  [MenuItem("Tools/MochiSprout/Reintentar archivos pendientes")]
+  public static void RetryPending()
+  {
+   if(activeKey!=null){Debug.Log(Tag+"Hay una importación en curso. Esperá a que termine.");return;}
+   try
+   {
+    state=LoadStateOrRecover();
+    foreach(var record in state.records.Where(r=>r.status!="completed")){record.status="pending";record.error="";record.attempts=0;ClearPrompted(record.key);}
+    SaveState();
+    var manifest=ReadManifest();
+    if(manifest!=null)foreach(var entry in manifest.packages)if(entry!=null&&entry.sha256!=null)ClearPrompted(entry.sha256);
+   }
+   catch(Exception ex){Debug.LogError(Tag+ex.Message);return;}
+   ClearPrompted("general");prompts.Clear();
+   stopped=false;nextCheck=Now+1;
+   EditorApplication.update-=Tick;EditorApplication.update+=Tick;
+   Debug.Log(Tag+"Reintentando los archivos pendientes. Los ya importados se conservan.");
+  }
+
+  [MenuItem("Tools/MochiSprout/Ver estado de importación")]
+  public static void ShowStatus()
+  {
+   var lines=new List<string>();
+   try
+   {
+    var manifest=ReadManifest();
+    var current=LoadStateOrRecover();
+    if(manifest==null){Dialog("MochiSprout","Este proyecto no tiene archivos .unitypackage enlazados.","Entendido");return;}
+    foreach(var entry in manifest.packages)
+    {
+     if(entry==null)continue;
+     var record=current.records.FirstOrDefault(r=>r.key==entry.sha256);
+     var status=record==null?"pendiente":record.status=="completed"?"importado":record.status=="skipped"?"omitido":record.status=="failed"?"con error":"pendiente";
+     lines.Add("• "+Path.GetFileName(entry.path)+": "+status);
+    }
+   }
+   catch(Exception ex){lines.Add("No se pudo leer el estado: "+ex.Message);}
+   Dialog("MochiSprout · Estado de importación",lines.Count==0?"No hay archivos enlazados.":string.Join("\n",lines.ToArray()),"Cerrar");
+  }
+
+  // ---------- Ciclo principal ----------
+  private static void Tick()
+  {
+   if(prompts.Count>0&&!Busy()){var prompt=prompts.Dequeue();try{prompt();}catch(Exception ex){Debug.LogError(Tag+ex.Message);}return;}
+   if(activeKey!=null){Watchdog();return;}
+   if(stopped||Now<nextCheck)return;
+   if(Busy()){nextCheck=Now+2;return;}
+   nextCheck=Now+1;
+   try{Step();}
+   catch(Exception ex){Stop(ex.Message);}
+  }
+
+  private static bool Busy(){return EditorApplication.isCompiling||EditorApplication.isUpdating||EditorApplication.isPlayingOrWillChangePlaymode;}
+
+  private static void Step()
+  {
+   var manifest=ReadManifest();
+   if(manifest==null){EditorApplication.update-=Tick;return;}
+   if(state==null)state=LoadStateOrRecover();
+   foreach(var entry in manifest.packages)
+   {
+    if(entry==null||string.IsNullOrEmpty(entry.sha256))throw new InvalidDataException("El manifiesto tiene un archivo sin huella de contenido. "+RepairHint);
+    var record=state.records.FirstOrDefault(r=>r.key==entry.sha256);
+    if(record!=null&&(record.status=="completed"||record.status=="skipped"))continue;
+    var name=Path.GetFileName(entry.path??"");
+    if(record!=null&&record.status=="importing")
+    {
+     // Unity se cerró o se colgó a mitad de la importación: se retoma sola, sin marcarla como completa.
+     record.status="pending";SaveState();
+     Debug.LogWarning(Tag+"Se retoma la importación interrumpida de "+name+".");
+    }
+    if(record!=null&&record.attempts>=MaxAutomaticAttempts)
+    {
+     stopped=true;
+     QueuePrompt(record.key,delegate{FailurePrompt(entry,record.error);});
+     return;
+    }
+    var path=ResolveArchive(entry.path,manifest.schemaVersion);
+    if(!File.Exists(path))
+    {
+     var found=SearchMoved(path,entry.sha256);
+     if(found==null){stopped=true;QueuePrompt(entry.sha256,delegate{MissingPrompt(manifest,entry,path);});return;}
+     Debug.Log(Tag+name+" se movió. Se encontró en "+found+" y se actualizó el enlace.");
+     entry.path=found;WriteManifest(manifest);path=found;
+    }
+    var hash=Hash(path);
+    if(hash!=entry.sha256){stopped=true;QueuePrompt(entry.sha256,delegate{ChangedPrompt(manifest,entry,path,hash);});return;}
+    Begin(entry.sha256,path);
+    return;
+   }
+   EditorApplication.update-=Tick;
+   Debug.Log(Tag+"Todos los archivos del preset están importados.");
+  }
+
+  private static void Begin(string key,string path)
+  {
+   var record=SetRecord(key,"importing","");record.attempts++;SaveState();
+   activeKey=key;activeName=Path.GetFileNameWithoutExtension(path);activeIdleSince=-1;
+   LockReload();
+   Debug.Log(Tag+"Importando "+Path.GetFileName(path)+(record.attempts>1?" (reintento)":""));
+   // El éxito lo confirma el aviso de Unity, no el regreso de ImportPackage.
+   try{AssetDatabase.ImportPackage(path,false);}
+   catch(Exception ex){FailActive(ex.Message);}
+  }
+
+  // Si Unity nunca confirma (versiones sin avisos o un aviso perdido), no se queda bloqueado para siempre.
+  private static void Watchdog()
+  {
+   if(Busy()){activeIdleSince=-1;return;}
+   if(activeIdleSince<0){activeIdleSince=Now;return;}
+   var idle=Now-activeIdleSince;
+   if(!eventsAvailable&&idle>=UnconfirmedGrace){Complete("Esta versión de Unity no confirma importaciones: se dio por terminada al quedar libre el Editor.");return;}
+   if(idle>=ConfirmTimeout)FailActive("Unity no confirmó la importación de "+activeName+".");
+  }
+
+  // ---------- Avisos de Unity ----------
+  private static bool IsOurImport(string name)
+  {
+   if(activeKey==null||name==null)return false;
+   return string.Equals(Path.GetFileNameWithoutExtension(name),activeName,StringComparison.OrdinalIgnoreCase);
+  }
+  private static void OnCompleted(string name){if(IsOurImport(name))Complete(null);}
+  private static void OnFailed(string name,string error){if(IsOurImport(name))FailActive("No se pudo importar "+name+": "+error);}
+  private static void OnCancelled(string name){if(IsOurImport(name))FailActive("Se canceló la importación de "+name+".");}
+  private static void OnQuitting(){ReleaseReload();}
+
+  private static void Complete(string note)
+  {
+   var name=activeName;
+   try{SetRecord(activeKey,"completed",note??"");SaveState();Debug.Log(Tag+"Importado: "+name+(note!=null?" ("+note+")":""));}
+   catch(Exception ex){stopped=true;Debug.LogError(Tag+"No se pudo registrar la importación: "+ex.Message);}
+   finally{activeKey=null;activeName=null;ReleaseReload();nextCheck=Now+1;}
+  }
+
+  private static void FailActive(string error)
+  {
+   var key=activeKey;var attempts=0;
+   try{var record=SetRecord(key,"failed",error);attempts=record.attempts;SaveState();}
+   catch(Exception ex){Debug.LogError(Tag+"No se pudo guardar el estado: "+ex.Message);}
+   finally{activeKey=null;activeName=null;ReleaseReload();}
+   if(attempts<MaxAutomaticAttempts){Debug.LogWarning(Tag+error+" Se reintenta automáticamente.");nextCheck=Now+3;return;}
+   Debug.LogError(Tag+error);
+   nextCheck=Now+1;   // el próximo paso muestra la ventana con opciones
+  }
+
+  private static void Stop(string error)
+  {
+   stopped=true;
+   if(activeKey!=null){FailActive(error);return;}
+   Debug.LogError(Tag+error);
+   QueuePrompt("general",delegate{Dialog("MochiSprout · Importación detenida",error+"\n\n"+RepairHint,"Entendido");});
+  }
+
+  // ---------- Ventanas con opciones ----------
+  private static void FailurePrompt(Entry entry,string error)
+  {
+   var name=Path.GetFileName(entry.path);
+   var choice=DialogComplex("MochiSprout · No se pudo importar","No se pudo importar "+name+" después de reintentarlo.\n\n"+error+"\n\nLos demás archivos quedan pendientes.","Reintentar","Más tarde","Omitir este archivo");
+   if(choice==0){var r=SetRecord(entry.sha256,"pending","");r.attempts=0;SaveState();Resume();}
+   else if(choice==2){SetRecord(entry.sha256,"skipped","Omitido por el usuario.");SaveState();Resume();}
+   else Debug.Log(Tag+"Podés reintentar desde Tools > MochiSprout > Reintentar archivos pendientes.");
+  }
+
+  private static void MissingPrompt(Manifest manifest,Entry entry,string path)
+  {
+   var name=Path.GetFileName(path);
+   var choice=DialogComplex("MochiSprout · Falta un archivo","No se encuentra "+name+" en:\n"+path+"\n\nPuede que se haya movido, renombrado o borrado.","Buscar archivo…","Más tarde","Omitir este archivo");
+   if(choice==2){SetRecord(entry.sha256,"skipped","Omitido por el usuario.");SaveState();Resume();return;}
+   if(choice!=0){Debug.Log(Tag+"Falta "+name+". Podés buscarlo después desde Tools > MochiSprout > Reintentar archivos pendientes.");return;}
+   var folder=Directory.Exists(Path.GetDirectoryName(path)??"")?Path.GetDirectoryName(path):Environment.GetEnvironmentVariable("USERPROFILE")??"";
+   var chosen=EditorUtility.OpenFilePanel("Elegí "+name,folder,"unitypackage");
+   if(string.IsNullOrEmpty(chosen))return;
+   var hash=Hash(chosen);
+   if(hash!=entry.sha256&&!Dialog("MochiSprout · El archivo es distinto","El archivo elegido no es igual al que enlazaste en MochiSprout (puede ser otra versión).\n\n¿Querés importarlo igual?","Importar este archivo","Cancelar"))return;
+   entry.path=Path.GetFullPath(chosen);entry.sha256=hash;WriteManifest(manifest);
+   Debug.Log(Tag+"Se volvió a enlazar "+name+" con "+entry.path+".");
+   Resume();
+  }
+
+  private static void ChangedPrompt(Manifest manifest,Entry entry,string path,string hash)
+  {
+   var name=Path.GetFileName(path);
+   var choice=DialogComplex("MochiSprout · El archivo cambió",name+" cambió desde que lo enlazaste en MochiSprout (por ejemplo, porque descargaste una versión nueva).\n\n"+path,"Importar igual","Más tarde","Omitir este archivo");
+   if(choice==0){entry.sha256=hash;WriteManifest(manifest);Resume();}
+   else if(choice==2){SetRecord(entry.sha256,"skipped","Omitido por el usuario.");SaveState();Resume();}
+  }
+
+  private static void Resume(){stopped=false;nextCheck=Now+1;EditorApplication.update-=Tick;EditorApplication.update+=Tick;}
+
+  // Una sola ventana por problema y por sesión del Editor, para no insistir en cada recompilación.
+  private static void QueuePrompt(string key,Action prompt)
+  {
+   if(BatchMode()){Debug.LogError(Tag+"Importación detenida (modo batch, sin ventanas). Revisá la consola.");return;}
+   if(WasPrompted(key)){Debug.LogWarning(Tag+"La importación sigue detenida. Usá Tools > MochiSprout > Reintentar archivos pendientes.");return;}
+   MarkPrompted(key);prompts.Enqueue(prompt);
+   EditorApplication.update-=Tick;EditorApplication.update+=Tick;
+  }
+
+  // ---------- Búsqueda de archivos movidos ----------
+  private static string SearchMoved(string originalPath,string sha256)
+  {
+   var name=Path.GetFileName(originalPath);
+   var folders=new List<string>();
+   var dir=Path.GetDirectoryName(originalPath);
+   for(var i=0;i<3&&!string.IsNullOrEmpty(dir);i++){folders.Add(dir);dir=Path.GetDirectoryName(dir);}
+   var home=Environment.GetEnvironmentVariable("USERPROFILE");
+   if(!string.IsNullOrEmpty(home))foreach(var sub in new[]{"Downloads","Desktop","Documents"})folders.Add(Path.Combine(home,sub));
+   folders.Add(Path.Combine(Root,"UnityPackages"));
+   foreach(var folder in folders.Distinct())
+   {
+    try
+    {
+     if(!Directory.Exists(folder))continue;
+     foreach(var candidate in Directory.GetFiles(folder,"*.unitypackage",SearchOption.TopDirectoryOnly))
+      if(string.Equals(Path.GetFileName(candidate),name,StringComparison.OrdinalIgnoreCase)&&Hash(candidate)==sha256)return Path.GetFullPath(candidate);
+    }
+    catch(Exception){}
+   }
+   return null;
+  }
+
+  // ---------- Archivos ----------
+  private static Manifest ReadManifest()
+  {
+   var file=Path.Combine(Root,RelativeManifest);
+   if(!File.Exists(file))return null;
+   Manifest manifest;
+   try{manifest=JsonUtility.FromJson<Manifest>(File.ReadAllText(file));}
+   catch(Exception ex){throw new InvalidDataException("No se pudo leer el manifiesto de importación ("+ex.Message+"). "+RepairHint);}
+   if(manifest==null||(manifest.schemaVersion!=1&&manifest.schemaVersion!=2)||manifest.packages==null)throw new InvalidDataException("El manifiesto de importación no es válido. "+RepairHint);
+   return manifest;
+  }
+
+  private static void WriteManifest(Manifest manifest)
+  {
+   if(manifest.schemaVersion==1)
+    foreach(var e in manifest.packages)if(e!=null&&!string.IsNullOrEmpty(e.path)&&!Path.IsPathRooted(e.path))e.path=Path.GetFullPath(Path.Combine(Root,e.path));
+   manifest.schemaVersion=2;
+   AtomicWrite(Path.Combine(Root,RelativeManifest),JsonUtility.ToJson(manifest,true));
+  }
+
+  private static string ResolveArchive(string relative,int schemaVersion)
+  {
+   if(string.IsNullOrEmpty(relative)||!relative.EndsWith(".unitypackage",StringComparison.OrdinalIgnoreCase))throw new InvalidDataException("La referencia al archivo original es inválida. "+RepairHint);
+   if(schemaVersion==2||Path.IsPathRooted(relative))
+   {
+    if(!Path.IsPathRooted(relative))throw new InvalidDataException("La referencia al archivo original es inválida. "+RepairHint);
+    return Path.GetFullPath(relative);
+   }
+   var archiveRoot=Path.GetFullPath(Path.Combine(Root,"Assets/VCCPresetStudio/Archives~"))+Path.DirectorySeparatorChar;
+   var path=Path.GetFullPath(Path.Combine(Root,relative));
+   if(!path.StartsWith(archiveRoot,StringComparison.OrdinalIgnoreCase))throw new InvalidDataException("El archivo queda fuera de la carpeta de paquetes. "+RepairHint);
+   return path;
+  }
+
+  // Si el estado se dañó, se aparta como respaldo y se empieza de nuevo en lugar de bloquear la importación.
+  private static ImportState LoadStateOrRecover()
+  {
+   var file=Path.Combine(Root,RelativeState);
+   // Proyecto preparado con VCC Preset Studio: se adopta su registro para no reimportar lo ya hecho.
+   var legacy=Path.Combine(Root,LegacyState);
+   if(!File.Exists(file)&&File.Exists(legacy)){try{File.Copy(legacy,file);File.Delete(legacy);}catch(Exception){}}
+   if(!File.Exists(file))return new ImportState();
+   try
+   {
+    var loaded=JsonUtility.FromJson<ImportState>(File.ReadAllText(file));
+    if(loaded!=null&&loaded.records!=null)return loaded;
+   }
+   catch(Exception){}
+   var backup=file+".danado-"+DateTime.Now.ToString("yyyyMMdd-HHmmss");
+   try{File.Move(file,backup);}catch(Exception){}
+   Debug.LogWarning(Tag+"El registro de importaciones estaba dañado. Se guardó una copia en "+backup+" y se empezó uno nuevo.");
+   return new ImportState();
+  }
+
+  private static ImportRecord SetRecord(string key,string status,string error)
+  {
+   if(state==null)state=LoadStateOrRecover();
+   var record=state.records.FirstOrDefault(r=>r.key==key);
+   if(record==null){record=new ImportRecord();record.key=key;state.records.Add(record);}
+   record.status=status;record.error=error;
+   return record;
+  }
+
+  private static void SaveState(){AtomicWrite(Path.Combine(Root,RelativeState),JsonUtility.ToJson(state,true));}
+
+  private static void AtomicWrite(string file,string content)
+  {
+   var temp=file+".tmp";
+   Directory.CreateDirectory(Path.GetDirectoryName(file));
+   File.WriteAllText(temp,content);
+   if(!File.Exists(file)){File.Move(temp,file);return;}
+   try{File.Replace(temp,file,null);}
+   catch(Exception){File.Copy(temp,file,true);File.Delete(temp);}   // algunos discos o carpetas sincronizadas no admiten Replace
+  }
+
+  private static string Hash(string file)
+  {
+   using(var stream=File.OpenRead(file))using(var sha=SHA256.Create())return BitConverter.ToString(sha.ComputeHash(stream)).Replace("-","").ToLowerInvariant();
+  }
+
+  // ---------- Compatibilidad entre versiones (reflexión) ----------
+  private static bool Subscribe(Type owner,string eventName,string handlerName)
+  {
+   try
+   {
+    var info=owner.GetEvent(eventName,BindingFlags.Public|BindingFlags.Static);
+    var handler=typeof(UnityPackageAutoImporter).GetMethod(handlerName,BindingFlags.NonPublic|BindingFlags.Static);
+    if(info==null||handler==null)return false;
+    var callback=Delegate.CreateDelegate(info.EventHandlerType,handler,false);
+    if(callback==null)return false;
+    info.AddEventHandler(null,callback);
+    return true;
+   }
+   catch(Exception){return false;}
+  }
+
+  private static void LockReload(){if(Invoke(typeof(EditorApplication),"LockReloadAssemblies"))reloadLocked=true;}
+  private static void ReleaseReload(){if(reloadLocked){reloadLocked=false;Invoke(typeof(EditorApplication),"UnlockReloadAssemblies");}}
+  private static bool Invoke(Type owner,string method)
+  {
+   try{var m=owner.GetMethod(method,BindingFlags.Public|BindingFlags.Static,null,Type.EmptyTypes,null);if(m==null)return false;m.Invoke(null,null);return true;}
+   catch(Exception){return false;}
+  }
+
+  private static bool BatchMode()
+  {
+   try
+   {
+    var p=typeof(Application).GetProperty("isBatchMode",BindingFlags.Public|BindingFlags.Static);
+    if(p!=null)return (bool)p.GetValue(null,null);
+    var t=Type.GetType("UnityEditorInternal.InternalEditorUtility, UnityEditor");
+    var q=t==null?null:t.GetProperty("inBatchMode",BindingFlags.Public|BindingFlags.Static);
+    return q!=null&&(bool)q.GetValue(null,null);
+   }
+   catch(Exception){return false;}
+  }
+
+  private static Type SessionStateType{get{return typeof(EditorApplication).Assembly.GetType("UnityEditor.SessionState");}}
+  private static bool WasPrompted(string key)
+  {
+   try{var t=SessionStateType;var m=t==null?null:t.GetMethod("GetBool",BindingFlags.Public|BindingFlags.Static);if(m!=null)return (bool)m.Invoke(null,new object[]{"MochiSprout.prompted."+key,false});}catch(Exception){}
+   return promptedFallback.Contains(key);
+  }
+  private static void MarkPrompted(string key)
+  {
+   promptedFallback.Add(key);
+   try{var t=SessionStateType;var m=t==null?null:t.GetMethod("SetBool",BindingFlags.Public|BindingFlags.Static);if(m!=null)m.Invoke(null,new object[]{"MochiSprout.prompted."+key,true});}catch(Exception){}
+  }
+  private static void ClearPrompted(string key)
+  {
+   promptedFallback.Remove(key);
+   try{var t=SessionStateType;var m=t==null?null:t.GetMethod("EraseBool",BindingFlags.Public|BindingFlags.Static);if(m!=null)m.Invoke(null,new object[]{"MochiSprout.prompted."+key});}catch(Exception){}
+  }
+
+  private static bool Dialog(string title,string message,string ok,string cancel=null)
+  {
+   if(BatchMode()){Debug.Log(Tag+title+": "+message);return false;}
+   return cancel==null?EditorUtility.DisplayDialog(title,message,ok):EditorUtility.DisplayDialog(title,message,ok,cancel);
+  }
+  private static int DialogComplex(string title,string message,string ok,string cancel,string alt)
+  {
+   if(BatchMode()){Debug.Log(Tag+title+": "+message);return 1;}
+   return EditorUtility.DisplayDialogComplex(title,message,ok,cancel,alt);
+  }
+ }
+}
+#endif

@@ -1,0 +1,207 @@
+<Window x:Class="MochiSprout.Views.PackageInfoWindow" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" Title="Información del paquete" Width="1000" Height="740" WindowStyle="None" AllowsTransparency="True" Background="Transparent" ResizeMode="NoResize" ShowInTaskbar="False" FontFamily="Inter, Segoe UI" FontSize="14" Foreground="#e7ecf3" WindowStartupLocation="Manual">
+  <Window.Resources>
+    <Style x:Key="InfoLabel" TargetType="TextBlock">
+      <Setter Property="FontSize" Value="12"/>
+      <Setter Property="Foreground" Value="#a3aebf"/>
+    </Style>
+    <Style x:Key="IconButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+      <Setter Property="Padding" Value="0"/>
+      <Setter Property="Width" Value="36"/>
+      <Setter Property="Height" Value="36"/>
+      <Setter Property="Background" Value="#1a2230"/>
+      <Setter Property="BorderBrush" Value="Transparent"/>
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="Button">
+            <Border x:Name="Surface" CornerRadius="9" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="1">
+              <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+            </Border>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsKeyboardFocused" Value="True">
+                <Setter TargetName="Surface" Property="BorderBrush" Value="#79b0ff"/>
+              </Trigger>
+              <Trigger Property="IsMouseOver" Value="True">
+                <Setter TargetName="Surface" Property="Background" Value="#263142"/>
+              </Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+    <Style TargetType="ComboBox" BasedOn="{StaticResource {x:Type ComboBox}}">
+      <Setter Property="Height" Value="40"/>
+      <Setter Property="FontSize" Value="15"/>
+      <Setter Property="FontWeight" Value="SemiBold"/>
+      <Setter Property="Background" Value="#0f151e"/>
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="ComboBox">
+            <Grid>
+              <ToggleButton x:Name="Toggle" Focusable="False" IsChecked="{Binding IsDropDownOpen, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}" ClickMode="Press">
+                <ToggleButton.Template>
+                  <ControlTemplate TargetType="ToggleButton">
+                    <Border Background="{Binding Background, RelativeSource={RelativeSource AncestorType=ComboBox}}" BorderBrush="#2c384a" BorderThickness="1" CornerRadius="10">
+                      <TextBlock Text="⌄" Foreground="#9EB5D0" HorizontalAlignment="Right" Margin="0,0,10,0" VerticalAlignment="Center"/>
+                    </Border>
+                  </ControlTemplate>
+                </ToggleButton.Template>
+              </ToggleButton>
+              <ContentPresenter IsHitTestVisible="False" Content="{TemplateBinding SelectionBoxItem}" ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}" ContentTemplateSelector="{TemplateBinding ItemTemplateSelector}" ContentStringFormat="{TemplateBinding SelectionBoxItemStringFormat}" Margin="11,7,30,7" VerticalAlignment="Center"/>
+              <Popup x:Name="PART_Popup" IsOpen="{TemplateBinding IsDropDownOpen}" Placement="Bottom" AllowsTransparency="True" Focusable="False" PopupAnimation="Fade">
+                <Border Background="#151c26" BorderBrush="#2c384a" BorderThickness="1" CornerRadius="10" MinWidth="{Binding ActualWidth, RelativeSource={RelativeSource TemplatedParent}}" MaxHeight="300">
+                  <ScrollViewer>
+                    <ItemsPresenter KeyboardNavigation.DirectionalNavigation="Contained"/>
+                  </ScrollViewer>
+                </Border>
+              </Popup>
+            </Grid>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsKeyboardFocusWithin" Value="True">
+                <Setter Property="BorderBrush" Value="#509EFF"/>
+              </Trigger>
+              <Trigger Property="IsEnabled" Value="False">
+                <Setter Property="Opacity" Value="0.45"/>
+              </Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+  </Window.Resources>
+  <Grid x:Name="OverlayRoot" Background="#B305080C" MouseLeftButtonDown="OverlayClick">
+    <Border x:Name="DialogPanel" Width="900" MaxHeight="640" VerticalAlignment="Center" HorizontalAlignment="Center" Background="#151c26" BorderBrush="#263142" BorderThickness="1" CornerRadius="18" KeyboardNavigation.TabNavigation="Cycle">
+      <Border.Effect>
+        <DropShadowEffect Color="Black" Opacity="0.5" BlurRadius="64" ShadowDepth="24" Direction="270"/>
+      </Border.Effect>
+      <Grid x:Name="DialogContent">
+        <Grid.RowDefinitions>
+          <RowDefinition Height="Auto"/>
+          <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+        <Border Padding="24,20,20,20" BorderBrush="#263142" BorderThickness="0,0,0,1">
+          <Grid>
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="48"/>
+              <ColumnDefinition Width="14"/>
+              <ColumnDefinition Width="*"/>
+              <ColumnDefinition Width="14"/>
+              <ColumnDefinition Width="36"/>
+            </Grid.ColumnDefinitions>
+            <Border Width="48" Height="48" Background="#15243b" CornerRadius="13">
+              <Path Data="M2,7 L12,2 L22,7 L22,19 L12,24 L2,19 Z M2,7 L12,12 L22,7 M12,12 L12,24 M7,4.5 L17,9.5" Width="24" Height="24" Stretch="Uniform" Stroke="#79b0ff" StrokeThickness="1.8"/>
+            </Border>
+            <StackPanel Grid.Column="2" VerticalAlignment="Center">
+              <TextBlock Text="{Binding SelectedCatalogPackage.DisplayName}" FontSize="20" FontWeight="SemiBold" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" ToolTip="{Binding SelectedCatalogPackage.DisplayName}"/>
+              <TextBlock Text="{Binding InspectedDescription}" FontSize="13" Foreground="#a3aebf" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" ToolTip="{Binding InspectedDescription}" Margin="0,5,0,0"/>
+            </StackPanel>
+            <Button x:Name="CloseButton" Grid.Column="4" Style="{StaticResource IconButton}" AutomationProperties.Name="Cerrar" ToolTip="Cerrar" Click="CloseInfo">
+              <Grid Width="16" Height="16">
+                <Path Data="M2,2 L14,14 M14,2 L2,14" Stroke="#c6cfdb" StrokeThickness="1.8" StrokeStartLineCap="Round" StrokeEndLineCap="Round"/>
+              </Grid>
+            </Button>
+          </Grid>
+        </Border>
+        <ScrollViewer x:Name="BodyScroll" Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" MaxHeight="550">
+          <Grid x:Name="BodyGrid">
+            <Grid.RowDefinitions>
+              <RowDefinition Height="Auto"/>
+              <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="*"/>
+              <ColumnDefinition x:Name="SideColumn" Width="300"/>
+            </Grid.ColumnDefinitions>
+            <ScrollViewer x:Name="DependencyScroll" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" MaxHeight="550">
+              <StackPanel Margin="24,22">
+                <TextBlock Text="{Binding InfoDependencyTitle}" FontSize="12" FontWeight="SemiBold" Foreground="#a3aebf" Margin="0,0,0,12"/>
+                <Border BorderBrush="#222b38" BorderThickness="1" CornerRadius="12" Background="#0f151e">
+                  <StackPanel>
+                    <ItemsControl ItemsSource="{Binding InfoDependencies}">
+                      <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                          <Border Padding="14,12" BorderBrush="#1f2836" BorderThickness="0,0,0,1">
+                            <Grid>
+                              <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="30"/>
+                                <ColumnDefinition Width="12"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="12"/>
+                                <ColumnDefinition Width="Auto"/>
+                              </Grid.ColumnDefinitions>
+                              <Border Width="30" Height="30" Background="#1a2230" CornerRadius="8" VerticalAlignment="Center">
+                                <Path Data="M7,13 L13,7 M8,5 L11,2 C15,-2 22,5 18,9 L15,12 M12,15 L9,18 C5,22 -2,15 2,11 L5,8" Width="17" Height="17" Stretch="Uniform" Stroke="#a3aebf" StrokeThickness="1.8"/>
+                              </Border>
+                              <StackPanel Grid.Column="2" VerticalAlignment="Center">
+                                <TextBlock Text="{Binding Id}" FontFamily="Cascadia Code, Consolas" FontSize="12" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" ToolTip="{Binding Id}"/>
+                                <TextBlock Text="{Binding Context}" FontSize="12" Foreground="#8a96a8" Margin="0,4,0,0" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" ToolTip="{Binding Context}"/>
+                              </StackPanel>
+                              <Border Grid.Column="4" Background="#1a2230" CornerRadius="6" Padding="8,3" VerticalAlignment="Center" MaxWidth="150">
+                                <TextBlock Text="{Binding Version}" FontFamily="Cascadia Code, Consolas" FontSize="12" FontWeight="SemiBold" Foreground="#c6cfdb" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" ToolTip="{Binding Version}"/>
+                              </Border>
+                            </Grid>
+                          </Border>
+                        </DataTemplate>
+                      </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <TextBlock Text="Este paquete no tiene dependencias." FontSize="13" Foreground="#a3aebf" Margin="14,16"><TextBlock.Style><Style TargetType="TextBlock"><Setter Property="Visibility" Value="Collapsed"/><Style.Triggers><DataTrigger Binding="{Binding InspectedDependencies.Count}" Value="0"><Setter Property="Visibility" Value="Visible"/></DataTrigger></Style.Triggers></Style></TextBlock.Style></TextBlock>
+                  </StackPanel>
+                </Border>
+                <Border Margin="0,20,0,0" Padding="14,12" Background="#121a26" BorderBrush="#1f2b3d" BorderThickness="1" CornerRadius="12">
+                  <Grid>
+                    <Grid.ColumnDefinitions>
+                      <ColumnDefinition Width="16"/>
+                      <ColumnDefinition Width="10"/>
+                      <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <Path Data="M8,1 A7,7 0 1 0 8,15 A7,7 0 1 0 8,1 M8,6 L8,12 M8,3.5 L8,4" Width="16" Height="16" Stroke="#79b0ff" StrokeThickness="1.8"/>
+                    <TextBlock Grid.Column="2" Text="El catálogo se lee de la caché local. Para ver versiones nuevas, actualizá los repositorios desde VCC." FontSize="12" LineHeight="18" Foreground="#a3aebf" TextWrapping="Wrap"/>
+                  </Grid>
+                </Border>
+              </StackPanel>
+            </ScrollViewer>
+            <Border x:Name="MetadataPanel" Grid.Column="1" Background="#121821" BorderBrush="#222b38" BorderThickness="1,0,0,0" Padding="22">
+              <StackPanel>
+                <TextBlock Text="Versión" Style="{StaticResource InfoLabel}" Margin="0,0,0,7"/>
+                <ComboBox ItemsSource="{Binding InspectorVersions}" SelectedItem="{Binding InspectedVersion}" DisplayMemberPath="Version" AutomationProperties.Name="Versión del paquete"/>
+                <TextBlock Text="{Binding InfoVersionsLabel}" FontSize="11" Foreground="#8a96a8" Margin="0,7,0,0"/>
+                <Border Height="1" Background="#222b38" Margin="0,18"/>
+                <Grid>
+                  <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                  </Grid.ColumnDefinitions>
+                  <TextBlock Text="Unity mínimo" FontSize="13" Foreground="#a3aebf" VerticalAlignment="Center"/>
+                  <TextBlock Grid.Column="1" Text="{Binding InspectedUnity}" FontSize="14" FontWeight="SemiBold" HorizontalAlignment="Right"/>
+                </Grid>
+                <Grid Margin="0,14,0,0">
+                  <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                  </Grid.ColumnDefinitions>
+                  <TextBlock Text="Autor" FontSize="13" Foreground="#a3aebf" VerticalAlignment="Center"/>
+                  <Border Grid.Column="1" Background="#1b3256" CornerRadius="999" Padding="9,3" HorizontalAlignment="Right" MaxWidth="180">
+                    <TextBlock Text="{Binding InspectedAuthor}" FontSize="12" FontWeight="SemiBold" Foreground="#79b0ff" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" ToolTip="{Binding InspectedAuthor}"/>
+                  </Border>
+                </Grid>
+                <TextBlock Text="ID del paquete" FontSize="13" Foreground="#a3aebf" Margin="0,18,0,7"/>
+                <Border Height="28" Background="#0f151e" BorderBrush="#222b38" BorderThickness="1" CornerRadius="8" Padding="8,0,2,0">
+                  <Grid>
+                    <Grid.ColumnDefinitions>
+                      <ColumnDefinition Width="*"/>
+                      <ColumnDefinition Width="24"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Text="{Binding SelectedCatalogPackage.Id}" FontFamily="Cascadia Code, Consolas" FontSize="12" Foreground="#c6cfdb" VerticalAlignment="Center" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" ToolTip="{Binding SelectedCatalogPackage.Id}" Margin="0,0,5,0"/>
+                    <Button Grid.Column="1" Width="24" Height="24" Style="{StaticResource IconButton}" Background="Transparent" AutomationProperties.Name="Copiar ID del paquete" ToolTip="Copiar ID del paquete" Click="CopyId">
+                      <Path Data="M5,1 L14,1 L14,11 M1,5 L10,5 L10,15 L1,15 Z" Width="14" Height="15" Stroke="#a3aebf" StrokeThickness="1.8" Stretch="Uniform"/>
+                    </Button>
+                  </Grid>
+                </Border>
+                <TextBlock x:Name="CopyNotice" Text="" FontSize="12" Foreground="#79b0ff" Margin="0,7,0,0" AutomationProperties.LiveSetting="Polite"/>
+              </StackPanel>
+            </Border>
+          </Grid>
+        </ScrollViewer>
+      </Grid>
+    </Border>
+  </Grid>
+</Window>

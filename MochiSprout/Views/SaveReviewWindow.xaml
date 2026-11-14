@@ -1,0 +1,314 @@
+<Window x:Class="MochiSprout.Views.SaveReviewWindow" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" Title="Revisar preset antes de guardar" Width="1000" Height="740" WindowStyle="None" AllowsTransparency="True" Background="Transparent" ShowInTaskbar="False" ResizeMode="NoResize" FontFamily="{StaticResource UiFont}" FontSize="14" Foreground="{StaticResource Ink}" WindowStartupLocation="Manual" KeyboardNavigation.TabNavigation="Cycle">
+  <Window.Resources>
+    <Style x:Key="Box" TargetType="Border">
+      <Setter Property="Background" Value="#151c26"/>
+      <Setter Property="BorderBrush" Value="#222b38"/>
+      <Setter Property="BorderThickness" Value="1"/>
+      <Setter Property="CornerRadius" Value="14"/>
+      <Setter Property="Margin" Value="0,0,0,14"/>
+    </Style>
+    <Style x:Key="BoxHead" TargetType="Border">
+      <Setter Property="Padding" Value="14,11"/>
+      <Setter Property="BorderBrush" Value="#222b38"/>
+      <Setter Property="BorderThickness" Value="0,0,0,1"/>
+    </Style>
+    <Style x:Key="RowName" TargetType="TextBlock">
+      <Setter Property="FontWeight" Value="SemiBold"/>
+      <Setter Property="Foreground" Value="#e7ecf3"/>
+      <Setter Property="TextWrapping" Value="NoWrap"/>
+      <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+    </Style>
+    <Style x:Key="RowMono" TargetType="TextBlock">
+      <Setter Property="FontFamily" Value="{StaticResource MonoFont}"/>
+      <Setter Property="FontSize" Value="11.5"/>
+      <Setter Property="Foreground" Value="#8a96a8"/>
+      <Setter Property="TextWrapping" Value="NoWrap"/>
+      <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+    </Style>
+    <Style x:Key="Key" TargetType="TextBlock">
+      <Setter Property="FontSize" Value="12.5"/>
+      <Setter Property="Foreground" Value="#8a96a8"/>
+      <Setter Property="Width" Value="110"/>
+    </Style>
+  </Window.Resources>
+  <Grid x:Name="OverlayRoot" Background="#B305080C">
+    <Border x:Name="DialogPanel" Style="{StaticResource ModalPanel}" Width="900">
+      <Grid>
+        <Grid.RowDefinitions>
+          <RowDefinition Height="Auto"/>
+          <RowDefinition Height="*"/>
+          <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+        <Border BorderBrush="{StaticResource LineSoft}" BorderThickness="0,0,0,1" Padding="12" MinHeight="60">
+          <DockPanel>
+            <Button DockPanel.Dock="Left" Style="{StaticResource IconBtn}" Command="{Binding BackToEditorCommand}" AutomationProperties.Name="Volver a editar" ToolTip="Volver a editar" Margin="0,0,8,0">
+              <Path Data="{StaticResource IcoBack}" Style="{StaticResource Ico}" Width="16" Height="16"/>
+            </Button>
+            <Button DockPanel.Dock="Right" Style="{StaticResource IconBtn}" Command="{Binding BackToEditorCommand}" AutomationProperties.Name="Cerrar revisión" ToolTip="Cerrar revisión">
+              <Path Data="{StaticResource IcoX}" Style="{StaticResource Ico}" Width="14" Height="14"/>
+            </Button>
+            <StackPanel VerticalAlignment="Center">
+              <TextBlock Text="Revisar preset" Style="{StaticResource ModalTitle}"/>
+              <TextBlock Text="Todavía no se guardó nada. Confirmá para guardar exactamente esto." Style="{StaticResource ModalSubtitle}"/>
+            </StackPanel>
+          </DockPanel>
+        </Border>
+
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Background="{StaticResource Surface2}">
+          <StackPanel Margin="20">
+            <!-- Encabezado del preset -->
+            <Border Style="{StaticResource Box}" Padding="16">
+              <DockPanel>
+                <Border Width="42" Height="42" CornerRadius="12" Margin="0,0,14,0" VerticalAlignment="Top">
+                  <Border.Style>
+                    <Style TargetType="Border">
+                      <Setter Property="Background" Value="#142540"/>
+                      <Style.Triggers>
+                        <DataTrigger Binding="{Binding PendingPreset.Mode}" Value="World">
+                          <Setter Property="Background" Value="#221c3a"/>
+                        </DataTrigger>
+                      </Style.Triggers>
+                    </Style>
+                  </Border.Style>
+                  <Path Width="20" Height="20">
+                    <Path.Style>
+                      <Style TargetType="Path" BasedOn="{StaticResource Ico}">
+                        <Setter Property="Data" Value="{StaticResource IcoAvatar}"/>
+                        <Setter Property="Stroke" Value="#79b0ff"/>
+                        <Style.Triggers>
+                          <DataTrigger Binding="{Binding PendingPreset.Mode}" Value="World">
+                            <Setter Property="Data" Value="{StaticResource IcoWorld}"/>
+                            <Setter Property="Stroke" Value="#b9a2ff"/>
+                          </DataTrigger>
+                        </Style.Triggers>
+                      </Style>
+                    </Path.Style>
+                  </Path>
+                </Border>
+                <StackPanel>
+                  <TextBlock Text="{Binding PendingPreset.DisplayName}" FontSize="18" FontWeight="SemiBold" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis"/>
+                  <TextBlock Foreground="#8a96a8" TextWrapping="Wrap" Margin="0,3,0,0">
+                    <TextBlock.Style>
+                      <Style TargetType="TextBlock">
+                        <Setter Property="Text" Value="{Binding PendingPreset.Notes, TargetNullValue=Sin descripción}"/>
+                        <Style.Triggers>
+                          <DataTrigger Binding="{Binding PendingPreset.Notes}" Value="">
+                            <Setter Property="Text" Value="Sin descripción"/>
+                          </DataTrigger>
+                        </Style.Triggers>
+                      </Style>
+                    </TextBlock.Style>
+                  </TextBlock>
+                </StackPanel>
+              </DockPanel>
+            </Border>
+
+            <Grid>
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition x:Name="LeftColumn" Width="*"/>
+                <ColumnDefinition x:Name="Gap" Width="14"/>
+                <ColumnDefinition x:Name="RightColumn" Width="*"/>
+              </Grid.ColumnDefinitions>
+              <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+              </Grid.RowDefinitions>
+              <!-- Proyecto -->
+              <Border x:Name="ProjectBox" Style="{StaticResource Box}">
+                <StackPanel>
+                  <Border Style="{StaticResource BoxHead}">
+                    <TextBlock Text="PROYECTO" Style="{StaticResource BoxTitle}"/>
+                  </Border>
+                  <StackPanel Margin="14,6,14,8">
+                    <StackPanel Orientation="Horizontal" Margin="0,4">
+                      <TextBlock Text="Tipo" Style="{StaticResource Key}"/>
+                      <TextBlock Text="{Binding PendingPreset.Mode}" FontWeight="SemiBold"/>
+                    </StackPanel>
+                    <DockPanel Margin="0,4">
+                      <TextBlock Text="Unity" Style="{StaticResource Key}"/>
+                      <TextBlock Text="{Binding PendingPreset.UnityVersion}" FontWeight="SemiBold" FontFamily="{StaticResource MonoFont}" FontSize="13"/>
+                    </DockPanel>
+                    <DockPanel Margin="0,4">
+                      <TextBlock Text="Ruta del editor" Style="{StaticResource Key}" VerticalAlignment="Top"/>
+                      <TextBlock Text="{Binding PendingPreset.UnityEditorPath}" Style="{StaticResource RowMono}" TextWrapping="Wrap" ToolTip="{Binding PendingPreset.UnityEditorPath}"/>
+                    </DockPanel>
+                    <DockPanel Margin="0,4">
+                      <TextBlock Text="Plantilla base" Style="{StaticResource Key}" VerticalAlignment="Top"/>
+                      <StackPanel>
+                        <TextBlock Text="{Binding ReviewBaseName}" TextWrapping="Wrap"/>
+                        <TextBlock Text="{Binding ReviewBaseSource}" Foreground="#8a96a8" FontSize="12" TextWrapping="Wrap" Margin="0,2,0,0"/>
+                      </StackPanel>
+                    </DockPanel>
+                  </StackPanel>
+                </StackPanel>
+              </Border>
+              <!-- Paquetes de la base -->
+              <Border x:Name="BaseBox" Grid.Column="2" Style="{StaticResource Box}">
+                <StackPanel>
+                  <Border Style="{StaticResource BoxHead}">
+                    <TextBlock Text="{Binding ReviewBasePackages.Count, StringFormat=INCLUIDOS EN LA BASE · {0}}" Style="{StaticResource BoxTitle}"/>
+                  </Border>
+                  <ItemsControl ItemsSource="{Binding ReviewBasePackages}" Margin="0,4,0,6">
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate>
+                        <Grid Margin="14,5">
+                          <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                          </Grid.ColumnDefinitions>
+                          <TextBlock Text="{Binding Id}" Style="{StaticResource RowMono}" Foreground="#c6cfdb" Margin="0,0,12,0" ToolTip="{Binding Id}"/>
+                          <TextBlock Grid.Column="1" Text="{Binding Version}" Style="{StaticResource RowMono}" Foreground="#79b0ff"/>
+                        </Grid>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                </StackPanel>
+              </Border>
+              <!-- Paquetes adicionales -->
+              <Border x:Name="ExtraBox" Grid.Row="1" Style="{StaticResource Box}">
+                <StackPanel>
+                  <Border Style="{StaticResource BoxHead}">
+                    <TextBlock Text="{Binding ReviewPackages.Count, StringFormat=PAQUETES ADICIONALES · {0}}" Style="{StaticResource BoxTitle}"/>
+                  </Border>
+                  <ItemsControl ItemsSource="{Binding ReviewPackages}">
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate>
+                        <Border BorderBrush="#222b38" BorderThickness="0,0,0,1" Padding="14,9">
+                          <Grid>
+                            <Grid.ColumnDefinitions>
+                              <ColumnDefinition Width="*"/>
+                              <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Margin="0,0,12,0">
+                              <TextBlock Text="{Binding DisplayName}" Style="{StaticResource RowName}" ToolTip="{Binding DisplayName}"/>
+                              <TextBlock Text="{Binding Id}" Style="{StaticResource RowMono}"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="1">
+                              <TextBlock Text="{Binding Version}" Style="{StaticResource RowMono}" Foreground="#79b0ff" FontSize="12.5" HorizontalAlignment="Right"/>
+                              <TextBlock Text="{Binding Repository}" Foreground="#8a96a8" FontSize="12" HorizontalAlignment="Right" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" MaxWidth="160"/>
+                            </StackPanel>
+                          </Grid>
+                        </Border>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                  <TextBlock Text="No elegiste paquetes adicionales." Foreground="#8a96a8" FontSize="13" Margin="14">
+                    <TextBlock.Style>
+                      <Style TargetType="TextBlock">
+                        <Setter Property="Visibility" Value="Collapsed"/>
+                        <Style.Triggers>
+                          <DataTrigger Binding="{Binding ReviewPackages.Count}" Value="0">
+                            <Setter Property="Visibility" Value="Visible"/>
+                          </DataTrigger>
+                        </Style.Triggers>
+                      </Style>
+                    </TextBlock.Style>
+                  </TextBlock>
+                </StackPanel>
+              </Border>
+              <!-- Repositorios -->
+              <Border x:Name="RepoBox" Grid.Row="1" Grid.Column="2" Style="{StaticResource Box}">
+                <StackPanel>
+                  <Border Style="{StaticResource BoxHead}">
+                    <TextBlock Text="{Binding PendingPreset.Repositories.Count, StringFormat=REPOSITORIOS · {0}}" Style="{StaticResource BoxTitle}"/>
+                  </Border>
+                  <ItemsControl ItemsSource="{Binding PendingPreset.Repositories}">
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate>
+                        <Border BorderBrush="#222b38" BorderThickness="0,0,0,1" Padding="14,9">
+                          <StackPanel>
+                            <TextBlock Text="{Binding DisplayName}" Style="{StaticResource RowName}"/>
+                            <TextBlock Text="{Binding Id}" Style="{StaticResource RowMono}"/>
+                            <TextBlock Text="{Binding Url}" Style="{StaticResource RowMono}" ToolTip="{Binding Url}"/>
+                          </StackPanel>
+                        </Border>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                  <TextBlock Text="Solo los repositorios de la base." Foreground="#8a96a8" FontSize="13" Margin="14">
+                    <TextBlock.Style>
+                      <Style TargetType="TextBlock">
+                        <Setter Property="Visibility" Value="Collapsed"/>
+                        <Style.Triggers>
+                          <DataTrigger Binding="{Binding PendingPreset.Repositories.Count}" Value="0">
+                            <Setter Property="Visibility" Value="Visible"/>
+                          </DataTrigger>
+                        </Style.Triggers>
+                      </Style>
+                    </TextBlock.Style>
+                  </TextBlock>
+                </StackPanel>
+              </Border>
+            </Grid>
+
+            <!-- Archivos -->
+            <Border Style="{StaticResource Box}">
+              <StackPanel>
+                <Border Style="{StaticResource BoxHead}">
+                  <TextBlock Text="{Binding PendingPreset.UnityPackages.Count, StringFormat=ARCHIVOS ENLAZADOS · {0}}" Style="{StaticResource BoxTitle}"/>
+                </Border>
+                <ItemsControl ItemsSource="{Binding PendingPreset.UnityPackages}">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                      <Border BorderBrush="#222b38" BorderThickness="0,0,0,1" Padding="14,9">
+                        <DockPanel>
+                          <Border Width="30" Height="30" CornerRadius="9" Background="#2a2112" Margin="0,0,12,0">
+                            <Path Data="{StaticResource IcoFile}" Style="{StaticResource Ico}" Stroke="#f0b35a" Width="15" Height="15"/>
+                          </Border>
+                          <StackPanel>
+                            <TextBlock Text="{Binding FileName}" Style="{StaticResource RowName}"/>
+                            <TextBlock Text="{Binding FullPath}" Style="{StaticResource RowMono}" ToolTip="{Binding FullPath}"/>
+                          </StackPanel>
+                        </DockPanel>
+                      </Border>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <TextBlock Text="Se importan desde su ruta original, sin copias: los archivos tienen que seguir accesibles en este equipo." Foreground="#8a96a8" FontSize="12.5" TextWrapping="Wrap" Margin="14,10,14,12"/>
+              </StackPanel>
+            </Border>
+
+            <!-- Validación -->
+            <Border Background="#2e2412" BorderBrush="#4f3b18" BorderThickness="1" CornerRadius="12" Padding="14,12">
+              <DockPanel>
+                <Path Data="{StaticResource IcoInfo}" Style="{StaticResource Ico}" Stroke="#f0b35a" VerticalAlignment="Top" Margin="0,1,10,0"/>
+                <StackPanel>
+                  <TextBlock Text="Validación de la selección" Foreground="#f3d29c" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                  <TextBlock Text="{Binding ReviewValidation}" Foreground="#f3d29c" TextWrapping="Wrap" FontSize="12.5"/>
+                </StackPanel>
+              </DockPanel>
+            </Border>
+          </StackPanel>
+        </ScrollViewer>
+
+        <Border Grid.Row="2" BorderBrush="{StaticResource LineSoft}" BorderThickness="0,1,0,0" Padding="20,12,16,12" MinHeight="64">
+          <Grid>
+            <Grid.RowDefinitions>
+              <RowDefinition Height="Auto"/>
+              <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+            <TextBlock Text="{Binding ReviewSaveError}" Foreground="#ff8080" TextWrapping="Wrap" Margin="0,0,0,8" AutomationProperties.LiveSetting="Assertive">
+              <TextBlock.Style>
+                <Style TargetType="TextBlock">
+                  <Style.Triggers>
+                    <DataTrigger Binding="{Binding ReviewSaveError}" Value="">
+                      <Setter Property="Visibility" Value="Collapsed"/>
+                    </DataTrigger>
+                  </Style.Triggers>
+                </Style>
+              </TextBlock.Style>
+            </TextBlock>
+            <DockPanel Grid.Row="1">
+              <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+                <ProgressBar Width="80" Height="4" IsIndeterminate="True" Foreground="#79b0ff" Background="#222b38" BorderThickness="0" Margin="0,0,12,0" Visibility="{Binding IsBusy, Converter={StaticResource Bool}}"/>
+                <Button Content="Volver a editar" Style="{StaticResource Btn}" Command="{Binding BackToEditorCommand}" Margin="0,0,10,0"/>
+                <Button x:Name="ConfirmButton" Content="Confirmar guardado" Style="{StaticResource BtnPrimary}" Command="{Binding ConfirmSaveCommand}"/>
+              </StackPanel>
+              <TextBlock Text="Guarda el preset en este equipo. Exportar a VCC es un paso aparte." Style="{StaticResource Hint}" VerticalAlignment="Center" Margin="0,0,12,0"/>
+            </DockPanel>
+          </Grid>
+        </Border>
+      </Grid>
+    </Border>
+  </Grid>
+</Window>
