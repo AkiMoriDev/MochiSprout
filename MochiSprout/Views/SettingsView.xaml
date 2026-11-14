@@ -241,10 +241,10 @@
           <!-- Unity -->
           <StackPanel Visibility="{Binding SettingsSection, Converter={StaticResource MatchVis}, ConverterParameter=unity}">
             <TextBlock Text="Instalaciones de Unity" Style="{StaticResource SectionHead}"/>
-            <TextBlock Text="Detectadas en Unity Hub y agregadas a mano. En cada preset elegís cuál usar." Style="{StaticResource Lead}"/>
+            <TextBlock Text="Detectadas en Unity Hub y agregadas a mano. Desmarcá las que no quieras ofrecer al crear presets." Style="{StaticResource Lead}"/>
             <Border Style="{StaticResource Group}">
               <StackPanel>
-                <ItemsControl ItemsSource="{Binding Installs}" AutomationProperties.Name="Instalaciones de Unity detectadas">
+                <ItemsControl ItemsSource="{Binding AllUnity}" AutomationProperties.Name="Instalaciones de Unity detectadas">
                   <ItemsControl.ItemTemplate>
                     <DataTemplate>
                       <Border BorderBrush="#222b38" BorderThickness="0,0,0,1" Padding="16,12">
@@ -260,7 +260,7 @@
                                 <Style TargetType="TextBlock" BasedOn="{StaticResource ChipText}">
                                   <Setter Property="Text" Value="Detectada"/>
                                   <Style.Triggers>
-                                    <DataTrigger Binding="{Binding IsManual}" Value="True">
+                                    <DataTrigger Binding="{Binding Install.IsManual}" Value="True">
                                       <Setter Property="Text" Value="Agregada a mano"/>
                                     </DataTrigger>
                                   </Style.Triggers>
@@ -268,6 +268,7 @@
                               </TextBlock.Style>
                             </TextBlock>
                           </Border>
+                          <CheckBox DockPanel.Dock="Left" IsChecked="{Binding IsEnabled}" VerticalAlignment="Center" Margin="0,0,14,0" ToolTip="Ofrecer esta instalación al crear presets" AutomationProperties.Name="{Binding Version, StringFormat=Ofrecer Unity {0} en los presets}"/>
                           <Border Width="34" Height="34" CornerRadius="10" Background="#142540" Margin="0,0,12,0">
                             <Path Data="{StaticResource IcoCube}" Style="{StaticResource Ico}" Stroke="#79b0ff"/>
                           </Border>
@@ -285,7 +286,7 @@
                     <Style TargetType="TextBlock">
                       <Setter Property="Visibility" Value="Collapsed"/>
                       <Style.Triggers>
-                        <DataTrigger Binding="{Binding Installs.Count}" Value="0">
+                        <DataTrigger Binding="{Binding AllUnity.Count}" Value="0">
                           <Setter Property="Visibility" Value="Visible"/>
                         </DataTrigger>
                       </Style.Triggers>
@@ -390,6 +391,17 @@
                   </DockPanel>
                 </Border>
               </StackPanel>
+            </Border>
+            <Border Style="{StaticResource Group}" Margin="0,14,0,0">
+              <DockPanel Margin="16,14">
+                <Button DockPanel.Dock="Right" Style="{StaticResource Btn}" Click="OpenSetup" VerticalAlignment="Center" Margin="12,0,0,0">
+                  <TextBlock Text="Abrir la guía" Foreground="#e7ecf3"/>
+                </Button>
+                <StackPanel>
+                  <TextBlock Text="Guía de primer inicio" Style="{StaticResource RowTitle}"/>
+                  <TextBlock Text="Vuelve a buscar VCC y Unity y repasa las preferencias. No borra tus presets." Style="{StaticResource RowHint}"/>
+                </StackPanel>
+              </DockPanel>
             </Border>
             <TextBlock Text="MochiSprout · aplicación de escritorio para VRChat Creator Companion" Foreground="#8a96a8" FontSize="12.5" Margin="2,16,0,0"/>
           </StackPanel>

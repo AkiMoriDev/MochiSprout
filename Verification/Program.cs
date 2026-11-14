@@ -231,6 +231,46 @@ class Program
   designedInfo.Width=1000;designedInfo.UpdateLayoutSize();Check(System.Windows.Controls.Grid.GetRow(metadata)==0&&System.Windows.Controls.Grid.GetColumn(metadata)==1,"Wide package info restores the two-column layout");
   File.WriteAllText(repo,File.ReadAllText(repo).Replace("\"displayName\":\"Tool\",\"unity\"","\"displayName\":\"Tool\",\"author\":{\"name\":\"Example Author\"},\"unity\""));
   Check(new RegisteredCatalogService(vcc).Load().Packages.SelectMany(p=>p.Versions).Any(v=>v.Author=="Example Author"),"Registered catalog reads package author metadata");
+  // ---------- Asistente de primer inicio ----------
+  var setupData=Path.Combine(root,"SetupData");
+  var wizard=new PresetController(new ProfileStore(setupData),new UnityDetectionService(),new RegisteredCatalogService(vcc),exporter,setupData);
+  Wait(wizard.InitializeAsync());
+  Check(wizard.NeedsSetup,"First run without preferences asks for the setup guide");
+  wizard.BeginSetupCommand.Execute(null);
+  Check(wizard.IsSetup&&wizard.SetupStep==0&&wizard.SetupStepItems.Count==6&&wizard.SetupStepItems[0].IsCurrent,"Setup opens on the welcome step with six steps");
+  void CaptureSetup(string name){var view=new MochiSprout.Views.SetupView{DataContext=wizard};view.Measure(new System.Windows.Size(1440,856));view.Arrange(new System.Windows.Rect(0,0,1440,856));view.UpdateLayout();System.Windows.Threading.Dispatcher.CurrentDispatcher.Invoke(()=>{},System.Windows.Threading.DispatcherPriority.ContextIdle);view.UpdateLayout();var bmp=new System.Windows.Media.Imaging.RenderTargetBitmap(1440,856,96,96,System.Windows.Media.PixelFormats.Pbgra32);bmp.Render(view);var enc=new System.Windows.Media.Imaging.PngBitmapEncoder();enc.Frames.Add(System.Windows.Media.Imaging.BitmapFrame.Create(bmp));using var stream=File.Create(Path.Combine(AppContext.BaseDirectory,name));enc.Save(stream);}
+  CaptureSetup("Setup-1-bienvenida.png");
+  Wait(wizard.SetupNextCommand.ExecuteAsync(null));
+  Wait(wizard.ScanVccAsync(vcc));
+  Check(wizard.SetupStep==1&&wizard.SetupVccFound&&wizard.SetupRepoCount==1&&wizard.SetupPackageCount==1&&!wizard.SetupScanning,"VCC step reads settings.json, repositories and cached packages");
+  CaptureSetup("Setup-2-vcc.png");
+  var noVcc=Path.Combine(root,"NoVcc");Directory.CreateDirectory(noVcc);Wait(wizard.ScanVccAsync(noVcc));
+  Check(!wizard.SetupVccFound&&wizard.SetupNextLabel=="Seguir sin VCC"&&!wizard.SetupNextIsPrimary,"Missing VCC is explained and can be skipped with a warning");
+  Wait(wizard.ScanVccAsync(vcc));
+  Wait(wizard.SetupNextCommand.ExecuteAsync(null));
+  var fakeUnity=Environment.ProcessPath!;wizard.SetupAddUnity(fakeUnity);
+  var manualChoice=wizard.SetupUnity.Single(u=>string.Equals(u.EditorPath,Path.GetFullPath(fakeUnity),StringComparison.OrdinalIgnoreCase));
+  Check(wizard.SetupStep==2&&manualChoice.Install.IsManual&&manualChoice.IsEnabled,"Unity step lists detected installs and accepts Unity.exe added by hand");
+  CaptureSetup("Setup-3-unity.png");
+  manualChoice.IsEnabled=false;
+  Check(!wizard.SetupUnity.Any(u=>u.IsEnabled)||wizard.SetupEnabledUnityCount==wizard.SetupUnity.Count(u=>u.IsEnabled),"Unchecking an install updates the live counter");
+  Wait(wizard.SetupNextCommand.ExecuteAsync(null));CaptureSetup("Setup-4-datos.png");
+  wizard.SetupPrerelease=true;wizard.SetupSkipCommand.Execute(null);
+  Check(wizard.SetupStep==5&&wizard.SetupSummary.Count==4&&wizard.SetupSummary[3].Value.Contains("preliminares"),"«Configurar después» jumps to the summary with the choices made");
+  CaptureSetup("Setup-6-listo.png");
+  bool? openedEditor=null;wizard.SetupClosed+=(_,create)=>openedEditor=create;
+  Wait(wizard.SetupFinishCommand.ExecuteAsync(true));
+  var setupPrefs=JsonSerializer.Deserialize<AppPreferences>(File.ReadAllText(Path.Combine(setupData,"preferences.json")))!;
+  Check(!wizard.IsSetup&&!wizard.NeedsSetup&&openedEditor==true&&setupPrefs.SetupCompleted,"Finishing saves the setup and asks to open a new preset");
+  Check(string.Equals(setupPrefs.VccRoot,Path.GetFullPath(vcc),StringComparison.OrdinalIgnoreCase)&&setupPrefs.ShowPrerelease,"Chosen VCC folder and preferences are saved");
+  Check(setupPrefs.HiddenInstalls.Contains(manualChoice.EditorPath,StringComparer.OrdinalIgnoreCase)&&!wizard.Installs.Any(i=>i.EditorPath==manualChoice.EditorPath)&&wizard.AllUnity.Any(c=>c.EditorPath==manualChoice.EditorPath&&!c.IsEnabled),"Unchecked Unity is kept but not offered in presets");
+  var setupAgain=new PresetController(new ProfileStore(setupData),new UnityDetectionService(),new RegisteredCatalogService(vcc),exporter,setupData);Wait(setupAgain.InitializeAsync());
+  Check(!setupAgain.NeedsSetup&&!setupAgain.Installs.Any(i=>i.EditorPath==manualChoice.EditorPath)&&setupAgain.AllUnity.Any(c=>c.EditorPath==manualChoice.EditorPath),"Next start skips the guide and remembers hidden installs");
+  setupAgain.AllUnity.Single(c=>c.EditorPath==manualChoice.EditorPath).IsEnabled=true;
+  Check(setupAgain.Installs.Any(i=>i.EditorPath==manualChoice.EditorPath),"Settings can offer a hidden install again");
+  var legacyPresets=Path.Combine(root,"LegacyPresets");Directory.CreateDirectory(legacyPresets);foreach(var n in new[]{"profiles.json","exported-templates.json","preferences.json"})File.WriteAllText(Path.Combine(legacyPresets,n),"{}");
+  var importedRoot=Path.Combine(root,"ImportedPresets");
+  Check(AppDataPaths.ImportLegacyPresets(importedRoot,legacyPresets)==2&&!File.Exists(Path.Combine(importedRoot,"preferences.json"))&&File.Exists(Path.Combine(legacyPresets,"profiles.json")),"Legacy presets are copied without old preferences and the old folder stays");
   Console.WriteLine($"{checks} checks passed. Fixtures: {root}");
  }
 }

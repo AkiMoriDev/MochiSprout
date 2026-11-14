@@ -13,9 +13,7 @@ public partial class App : Application
     protected override void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
-        // Primera vez con la carpeta nueva: trae los presets de %LocalAppData%\VCCPresetStudio (sin borrar el original).
-        try { AppDataPaths.MigrateLegacyData(); }
-        catch (Exception ex) { MessageBox.Show($"No se pudieron copiar los datos anteriores desde {AppDataPaths.LegacyRoot}:\n{ex.Message}", "MochiSprout", MessageBoxButton.OK, MessageBoxImage.Warning); }
+        // Los presets de VCC Preset Studio se traen desde el asistente de primer inicio, si el usuario lo elige.
         var services = new ServiceCollection();
         services.AddSingleton<IProfileStore, ProfileStore>();
         services.AddSingleton<UnityDetectionService>();

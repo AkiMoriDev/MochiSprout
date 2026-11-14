@@ -86,6 +86,7 @@ public partial class PresetController : ObservableObject
                     RememberLastPage = prefs.RememberLastPage; ShowPrerelease = prefs.ShowPrerelease;
                     Page = "Presets";
                     foreach (var i in prefs.ManualInstalls) if (File.Exists(i.EditorPath)) Installs.Add(i);
+                    hiddenInstalls = new HashSet<string>(prefs.HiddenInstalls ?? [], StringComparer.OrdinalIgnoreCase);
                 }
             }
             foreach (var p in await store.LoadAsync()) Presets.Add(p);
@@ -93,6 +94,7 @@ public partial class PresetController : ObservableObject
             await RefreshSourcesCoreAsync();
             VccPathDraft = vccRoot;
             Page = "Presets";
+            NeedsSetup = !savedPreferences.SetupCompleted;
         }
         catch (Exception ex) { Status = $"No se pudo cargar: {ex.Message}"; }
         finally { IsBusy = false; }
@@ -164,9 +166,10 @@ public partial class PresetController : ObservableObject
         var detection = Task.Run(() => unity.Detect());
         var loading = Task.Run(() => new RegisteredCatalogService(vccRoot).Load());
         await Task.WhenAll(detection, loading);
-        var manual = Installs.Where(i => i.IsManual).ToList(); Installs.Clear();
-        foreach (var i in await detection) Installs.Add(i);
-        foreach (var i in manual) if (!Installs.Any(x => string.Equals(x.EditorPath, i.EditorPath, StringComparison.OrdinalIgnoreCase))) Installs.Add(i);
+        var manual = AllManualInstalls();
+        var all = new List<DetectedUnityInstall>(await detection);
+        foreach (var i in manual) if (!all.Any(x => string.Equals(x.EditorPath, i.EditorPath, StringComparison.OrdinalIgnoreCase))) all.Add(i);
+        RebuildInstalls(all);
         SelectedUnity = Installs.FirstOrDefault(i => i.EditorPath == previous) ?? Installs.FirstOrDefault();
         foreach (var p in catalog) p.PropertyChanged -= PackageChanged;
         var old = catalog.ToList(); catalog.Clear(); Packages.Clear(); Repositories.Clear(); Repositories.Add("Todos los repositorios");
@@ -295,6 +298,8 @@ public partial class PresetController : ObservableObject
         var version = info.ProductVersion?.Split(' ').FirstOrDefault();
         if (string.IsNullOrWhiteSpace(version)) throw new InvalidOperationException("El ejecutable no informa su versión de Unity.");
         var install = Installs.FirstOrDefault(i => string.Equals(i.EditorPath, path, StringComparison.OrdinalIgnoreCase)) ?? new DetectedUnityInstall(version, path, true);
+        hiddenInstalls.Remove(install.EditorPath);
+        if (!AllUnity.Any(c => string.Equals(c.Install.EditorPath, path, StringComparison.OrdinalIgnoreCase))) AddUnityChoice(install);
         if (!Installs.Contains(install)) Installs.Add(install); SelectedUnity = install; await SavePreferencesAsync();
     }
     public void AddFiles(IEnumerable<string> files) { foreach (var file in files) if (!Attachments.Any(f => string.Equals(f.FullPath, file, StringComparison.OrdinalIgnoreCase))) Attachments.Add(new() { FileName = Path.GetFileName(file), FullPath = file }); }
@@ -304,7 +309,8 @@ public partial class PresetController : ObservableObject
     {
         Directory.CreateDirectory(DataRoot);
         savedPreferences.VccRoot = vccRoot;
-        savedPreferences.ManualInstalls = Installs.Where(i => i.IsManual && File.Exists(i.EditorPath)).ToList();
+        savedPreferences.ManualInstalls = AllManualInstalls().Where(i => File.Exists(i.EditorPath)).ToList();
+        savedPreferences.HiddenInstalls = hiddenInstalls.ToList();
         savedPreferences.RememberLastPage = RememberLastPage;
         savedPreferences.ShowPrerelease = ShowPrerelease;
         savedPreferences.LastPage = Page;

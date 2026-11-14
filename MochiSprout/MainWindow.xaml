@@ -67,6 +67,9 @@
             </Border>
             <TextBlock Text="MochiSprout" FontWeight="SemiBold" FontSize="14" Margin="10,0,0,0" VerticalAlignment="Center"/>
             <TextBlock x:Name="BrandSubtitle" Text="Tu próximo proyecto, listo." Foreground="#8a96a8" FontSize="12.5" Margin="10,0,0,0" VerticalAlignment="Center" TextWrapping="NoWrap"/>
+            <Border Style="{StaticResource Chip}" Background="#13302b" BorderBrush="#1f4a40" Margin="12,0,0,0" VerticalAlignment="Center" Visibility="{Binding IsSetup, Converter={StaticResource Bool}}">
+              <TextBlock Text="Configuración inicial" Style="{StaticResource ChipText}" Foreground="#7fd6b8"/>
+            </Border>
           </StackPanel>
           <Border x:Name="SearchBox" Grid.Column="1" MaxWidth="440" Height="30" Margin="12,0" CornerRadius="9" Background="{StaticResource Surface2}" BorderBrush="{StaticResource LineSoft}" BorderThickness="1" WindowChrome.IsHitTestVisibleInChrome="True">
             <Grid Margin="10,0">
@@ -207,6 +210,20 @@
         <Border x:Name="PackagesPanel" Width="1080" Height="744" Style="{StaticResource ModalPanel}" FocusManager.IsFocusScope="True">
           <views:CatalogView/>
         </Border>
+      </Grid>
+      <!-- Asistente de primer inicio: ocupa el área de contenido, debajo de la barra de título -->
+      <Grid x:Name="SetupOverlay" Grid.Row="1" Grid.RowSpan="2" Visibility="{Binding IsSetup, Converter={StaticResource Bool}}">
+        <views:SetupView x:Name="Setup">
+          <views:SetupView.Style>
+            <Style TargetType="views:SetupView">
+              <Style.Triggers>
+                <DataTrigger Binding="{Binding IsBusy}" Value="True">
+                  <Setter Property="IsEnabled" Value="False"/>
+                </DataTrigger>
+              </Style.Triggers>
+            </Style>
+          </views:SetupView.Style>
+        </views:SetupView>
       </Grid>
       <Grid Grid.Row="1" Grid.RowSpan="2" Background="#B305080C" Visibility="{Binding TemplateDetailsOpen, Converter={StaticResource Bool}}">
         <Border Style="{StaticResource ModalPanel}" Width="700" MaxHeight="650" Margin="20">

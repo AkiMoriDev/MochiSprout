@@ -13,6 +13,12 @@ public partial class SettingsView : UserControl
  }
  private static MainWindow? Main=>Application.Current?.MainWindow as MainWindow;
  private void CloseSettings(object sender,RoutedEventArgs e)=>Window.GetWindow(this)?.Close();
+ private void OpenSetup(object sender,RoutedEventArgs e)
+ {
+  if(DataContext is not MochiSprout.Controllers.PresetController c||c.IsBusy)return;
+  Window.GetWindow(this)?.Close();
+  c.BeginSetupCommand.Execute(null);
+ }
  private void EnableProjectImports(object sender,RoutedEventArgs e)=>Main?.EnableProjectImports(sender,e);
  private void ChooseVcc(object sender,RoutedEventArgs e)=>Main?.ChooseVcc(sender,e);
  private void AddUnity(object sender,RoutedEventArgs e)=>Main?.AddUnity(sender,e);

@@ -32,4 +32,23 @@ public static class AppDataPaths
         }
         return copied;
     }
+
+    /// <summary>
+    /// Copia los presets y el registro de plantillas exportadas de VCC Preset Studio, sin preferencias (esas las elige
+    /// el asistente de primer inicio) y sin sobrescribir nada. La carpeta anterior queda intacta.
+    /// </summary>
+    public static int ImportLegacyPresets(string root, string legacyRoot)
+    {
+        var copied = 0;
+        Directory.CreateDirectory(root);
+        foreach (var name in new[] { "profiles.json", "exported-templates.json" })
+        {
+            var source = Path.Combine(legacyRoot, name);
+            var target = Path.Combine(root, name);
+            if (!File.Exists(source) || File.Exists(target)) continue;
+            File.Copy(source, target);
+            copied++;
+        }
+        return copied;
+    }
 }

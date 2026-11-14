@@ -18,7 +18,7 @@ Elegís una vez el tipo de proyecto (Avatar o World), la versión de Unity, los 
 
 ## Descarga
 
-1. Bajá `MochiSprout-v1.0.0-windows.zip` desde [Releases](https://github.com/AkiMoriDev/MochiSprout/releases/latest).
+1. Bajá el `.zip` de la última versión desde [Releases](https://github.com/AkiMoriDev/MochiSprout/releases/latest).
 2. Descomprimilo en cualquier carpeta.
 3. Abrí `MochiSprout.exe`.
 
@@ -32,7 +32,7 @@ No necesita instalación.
 
 ## Cómo se usa
 
-1. Abrí MochiSprout. Arriba vas a ver si encontró VCC, tus instalaciones de Unity y el catálogo de paquetes.
+1. La primera vez, una guía corta busca VCC y tus instalaciones de Unity, te deja elegir cuáles usar y trae tus presets anteriores si los tenés. La podés volver a abrir desde Configuración.
 2. Creá un preset con **Nuevo preset** o partí de una plantilla oficial con **Usar como base**.
 3. Elegí tipo y versión de Unity, marcá los paquetes y agregá tus `.unitypackage` (también podés arrastrarlos).
 4. **Crear preset** muestra una revisión completa antes de guardar.
@@ -58,7 +58,7 @@ El script usa solo C# 4 y accede por reflexión a las APIs del Editor que cambia
 | Plantillas exportadas | `%LocalAppData%\VRChatCreatorCompanion\Templates` |
 | Estado de importación de cada proyecto | `ProjectSettings/MochiSproutImportState.json` dentro del proyecto de Unity |
 
-Si venís de VCC Preset Studio (el nombre anterior de la app), la primera vez que abras MochiSprout se copian tus datos desde `%LocalAppData%\VCCPresetStudio` (la carpeta anterior no se borra). Los proyectos de Unity preparados con la versión anterior se actualizan solos al volver a prepararlos: se reemplaza el importador viejo y se conserva su registro de importaciones.
+Si venís de VCC Preset Studio (el nombre anterior de la app), la guía de primer inicio ofrece traer tus presets desde `%LocalAppData%\VCCPresetStudio` (la carpeta anterior no se borra). Los proyectos de Unity preparados con la versión anterior se actualizan solos al volver a prepararlos: se reemplaza el importador viejo y se conserva su registro de importaciones.
 
 ## Estructura
 

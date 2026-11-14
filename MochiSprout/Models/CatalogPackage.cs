@@ -33,6 +33,10 @@ public sealed class AppPreferences
  public bool RememberLastPage {get;set;} = true;
  public bool ShowPrerelease {get;set;}
  public string LastPage {get;set;} = "Presets";
+ /// <summary>El asistente de primer inicio se completó o se salteó. Falta en preferencias viejas: el asistente se muestra una vez.</summary>
+ public bool SetupCompleted {get;set;}
+ /// <summary>Rutas de Unity.exe detectadas que el usuario eligió no ofrecer en los presets.</summary>
+ public List<string> HiddenInstalls {get;set;} = [];
 }
 
 

@@ -27,20 +27,22 @@ public partial class MainWindow : Window
   controller.SaveReviewRequested+=OnSaveReviewRequested;
   controller.ExportRequested+=OnExportRequested;
   controller.EditorRequested+=OnEditorRequested;controller.UtilityRequested+=OnUtilityRequested;
-  Closed+=(_,_)=>{controller.PropertyChanged-=EditorVisibilityChanged;controller.SaveReviewRequested-=OnSaveReviewRequested;controller.ExportRequested-=OnExportRequested;controller.EditorRequested-=OnEditorRequested;controller.UtilityRequested-=OnUtilityRequested;};
-  Loaded+=async(_,_)=>{UpdateResponsiveLayout();await controller.InitializeAsync();};
+  controller.SetupRequested+=OnSetupRequested;controller.SetupClosed+=OnSetupClosed;
+  Closed+=(_,_)=>{controller.SetupRequested-=OnSetupRequested;controller.SetupClosed-=OnSetupClosed;controller.PropertyChanged-=EditorVisibilityChanged;controller.SaveReviewRequested-=OnSaveReviewRequested;controller.ExportRequested-=OnExportRequested;controller.EditorRequested-=OnEditorRequested;controller.UtilityRequested-=OnUtilityRequested;};
+  Loaded+=async(_,_)=>{UpdateResponsiveLayout();await controller.InitializeAsync();if(controller.NeedsSetup)controller.BeginSetupCommand.Execute(null);};
   Closing+=async(_,e)=>{if(closeReady)return;e.Cancel=true;if(controller.IsBusy||controller.SaveReviewOpen)return;if(controller.IsEditor&&!CanDiscardEditor())return;try{await controller.SaveSessionAsync();}catch(Exception ex){controller.Status=$"No se pudo recordar la sesión: {ex.Message}";}finally{closeReady=true;Close();}};
  }
  private void OnPreviewKeyDown(object sender,KeyEventArgs e)
  {
   if(e.Key==Key.K&&Keyboard.Modifiers==ModifierKeys.Control&&!ModalOpen){PresetSearchInput.Focus();PresetSearchInput.SelectAll();e.Handled=true;return;}
   if(e.Key!=Key.Escape)return;
+  if(controller.IsSetup){e.Handled=true;return;}   // el primer inicio no se descarta con Esc: tiene «Configurar después»
   if(PackagesOverlay.Visibility==Visibility.Visible){ClosePackages(this,new RoutedEventArgs());e.Handled=true;return;}
   if(controller.IsEditor&&!controller.IsBusy&&!controller.SaveReviewOpen){RequestCloseEditor();e.Handled=true;return;}
   if(controller.TemplateDetailsOpen){controller.CloseTemplateDetailsCommand.Execute(null);e.Handled=true;return;}
   if(PresetSearchInput.IsKeyboardFocusWithin&&controller.PresetSearch.Length>0){controller.PresetSearch="";e.Handled=true;}
  }
- private bool ModalOpen=>controller.IsEditor||PackagesOverlay.Visibility==Visibility.Visible||controller.TemplateDetailsOpen;
+ private bool ModalOpen=>controller.IsSetup||controller.IsEditor||PackagesOverlay.Visibility==Visibility.Visible||controller.TemplateDetailsOpen;
  private void UpdateTitleActions(){var enabled=!ModalOpen;TitleActions.IsEnabled=enabled;SearchBox.IsEnabled=enabled;}
  private void UpdateResponsiveLayout()
  {
@@ -77,7 +79,7 @@ public partial class MainWindow : Window
  internal void RequestCloseEditor(){if(controller.IsBusy||controller.SaveReviewOpen||!CanDiscardEditor())return;controller.CancelEditCommand.Execute(null);}
  private void EditorVisibilityChanged(object? sender,System.ComponentModel.PropertyChangedEventArgs e)
  {
-  if(e.PropertyName is nameof(PresetController.IsEditor) or nameof(PresetController.TemplateDetailsOpen))UpdateTitleActions();
+  if(e.PropertyName is nameof(PresetController.IsEditor) or nameof(PresetController.TemplateDetailsOpen) or nameof(PresetController.IsSetup))UpdateTitleActions();
   if(e.PropertyName==nameof(PresetController.IsEditor)&&!controller.IsEditor)Dispatcher.BeginInvoke(new Action(()=>{if(editorOpener is UIElement element&&element.IsVisible&&element.IsEnabled)Keyboard.Focus(element);}));
  }
  private void OnUtilityRequested(string section)
@@ -87,6 +89,14 @@ public partial class MainWindow : Window
   utilityWindow=new Views.UtilityWindow(controller,section,new Views.SettingsView()){Owner=DialogOwner};
   try{utilityWindow.ShowDialog();}finally{utilityWindow=null;if(opener?.IsVisible==true)opener.Focus();}
  }
+ private void OnSetupRequested(object? sender,EventArgs e)
+ {
+  if(utilityWindow?.IsVisible==true)utilityWindow.Close();
+  PackagesOverlay.Visibility=Visibility.Collapsed;
+  UpdateTitleActions();
+  Setup.FocusPrimary();
+ }
+ private void OnSetupClosed(object? sender,bool createPreset){UpdateTitleActions();if(createPreset)controller.NewPresetCommand.Execute(null);}
  internal void ClosePackages(object sender,RoutedEventArgs e){PackagesOverlay.Visibility=Visibility.Collapsed;UpdateTitleActions();}
  private void OnSaveReviewRequested(object? sender,EventArgs e)
  {
