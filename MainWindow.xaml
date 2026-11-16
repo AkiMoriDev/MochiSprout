@@ -211,6 +211,33 @@
           <views:CatalogView/>
         </Border>
       </Grid>
+      <!-- Pantalla de arranque: tapa la biblioteca mientras se comprueban datos, VCC y Unity -->
+      <Grid x:Name="StartupOverlay" Grid.Row="1" Grid.RowSpan="2" Background="#0d131b" Visibility="{Binding IsStarting, Converter={StaticResource Bool}}" Panel.ZIndex="10">
+        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+          <Border Width="64" Height="64" CornerRadius="18" Background="{StaticResource SproutBg}" HorizontalAlignment="Center">
+            <Path Data="{StaticResource IcoSprout}" Style="{StaticResource Ico}" Stroke="{StaticResource SproutInk}" Width="32" Height="32"/>
+          </Border>
+          <TextBlock Text="MochiSprout" FontSize="22" FontWeight="SemiBold" HorizontalAlignment="Center" Margin="0,16,0,0"/>
+          <TextBlock Text="Tu próximo proyecto, listo." Foreground="#8a96a8" HorizontalAlignment="Center" Margin="0,2,0,24"/>
+          <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+            <Ellipse Width="18" Height="18" StrokeThickness="2" StrokeDashArray="6 3" Stroke="#79b0ff" RenderTransformOrigin="0.5,0.5" Margin="0,0,10,0">
+              <Ellipse.RenderTransform>
+                <RotateTransform x:Name="StartupSpin"/>
+              </Ellipse.RenderTransform>
+              <Ellipse.Triggers>
+                <EventTrigger RoutedEvent="Loaded">
+                  <BeginStoryboard>
+                    <Storyboard>
+                      <DoubleAnimation Storyboard.TargetName="StartupSpin" Storyboard.TargetProperty="Angle" From="0" To="360" Duration="0:0:0.9" RepeatBehavior="Forever"/>
+                    </Storyboard>
+                  </BeginStoryboard>
+                </EventTrigger>
+              </Ellipse.Triggers>
+            </Ellipse>
+            <TextBlock Text="{Binding StartupMessage}" Foreground="#a3aebf" VerticalAlignment="Center" AutomationProperties.LiveSetting="Polite"/>
+          </StackPanel>
+        </StackPanel>
+      </Grid>
       <!-- Asistente de primer inicio: ocupa el área de contenido, debajo de la barra de título -->
       <Grid x:Name="SetupOverlay" Grid.Row="1" Grid.RowSpan="2" Visibility="{Binding IsSetup, Converter={StaticResource Bool}}">
         <views:SetupView x:Name="Setup">

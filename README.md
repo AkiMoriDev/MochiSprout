@@ -63,13 +63,13 @@ Si venís de VCC Preset Studio (el nombre anterior de la app), la guía de prime
 ## Estructura
 
 ```
-MochiSprout/              App WPF (.NET 8)
-  Controllers/            PresetController: casos de uso y estado de la interfaz
-  Models/                 Presets, catálogo y preferencias
-  Services/               VCC, VPM, Unity, persistencia y exportación
-  Views/                  Vistas XAML y modales
-  Resources/              Script del importador que se copia a los proyectos de Unity
-  Assets/Themes/          Tema oscuro, colores e íconos vectoriales
+MochiSprout.csproj        App WPF (.NET 8), en la raíz del repositorio
+Controllers/              PresetController: casos de uso y estado de la interfaz
+Models/                   Presets, catálogo y preferencias
+Services/                 VCC, VPM, Unity, persistencia y exportación
+Views/                    Vistas XAML y modales
+Resources/                Script del importador que se copia a los proyectos de Unity
+Assets/Themes/            Tema oscuro, colores e íconos vectoriales
 Verification/             Comprobaciones automáticas de la app
   ImporterHarness/        Pruebas del importador con Unity simulado
 docs/screenshots/         Capturas para este README

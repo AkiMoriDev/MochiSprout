@@ -168,6 +168,9 @@ class Program
   var image=new System.Windows.Media.Imaging.RenderTargetBitmap(1400,850,96,96,System.Windows.Media.PixelFormats.Pbgra32);image.Render(home);var png=new System.Windows.Media.Imaging.PngBitmapEncoder();png.Frames.Add(System.Windows.Media.Imaging.BitmapFrame.Create(image));using(var file=File.Create(Path.Combine(AppContext.BaseDirectory,"MochiSprout-preview.png")))png.Save(file);
   nav.CancelEditCommand.Execute(null);
   var main=new MochiSprout.MainWindow(nav);Check(main.Title=="MochiSprout","Main window loads the MochiSprout layout");
+  var startup=(System.Windows.FrameworkElement)main.FindName("StartupOverlay");var mainLibrary=(System.Windows.FrameworkElement)main.FindName("Library");
+  nav.IsStarting=true;main.UpdateLayout();Check(startup.Visibility==System.Windows.Visibility.Visible,"Startup screen covers the library while checking VCC and Unity");
+  nav.IsStarting=false;main.UpdateLayout();Check(startup.Visibility==System.Windows.Visibility.Collapsed,"Library appears only after the startup checks finish");
   var mainContent=(System.Windows.FrameworkElement)main.Content;mainContent.Measure(new System.Windows.Size(1440,900));mainContent.Arrange(new System.Windows.Rect(0,0,1440,900));mainContent.UpdateLayout();var screen=new System.Windows.Media.Imaging.RenderTargetBitmap(1440,900,96,96,System.Windows.Media.PixelFormats.Pbgra32);screen.Render(mainContent);var encoder=new System.Windows.Media.Imaging.PngBitmapEncoder();encoder.Frames.Add(System.Windows.Media.Imaging.BitmapFrame.Create(screen));using(var previewFile=File.Create(Path.Combine(AppContext.BaseDirectory,"MochiSprout-full.png")))encoder.Save(previewFile);
 
   nav.NewPresetCommand.Execute(null);
@@ -234,9 +237,9 @@ class Program
   // ---------- Asistente de primer inicio ----------
   var setupData=Path.Combine(root,"SetupData");
   var wizard=new PresetController(new ProfileStore(setupData),new UnityDetectionService(),new RegisteredCatalogService(vcc),exporter,setupData);
-  Wait(wizard.InitializeAsync());
-  Check(wizard.NeedsSetup,"First run without preferences asks for the setup guide");
-  wizard.BeginSetupCommand.Execute(null);
+  Check(!wizard.IsSetupCompleted(),"First run without preferences goes to the initial setup window");
+  Wait(wizard.PrepareSetupAsync());
+  Check(wizard.IsSetup&&!wizard.IsLoaded&&wizard.Packages.Count==0,"Initial setup opens before scanning VCC, Unity or the catalog");
   Check(wizard.IsSetup&&wizard.SetupStep==0&&wizard.SetupStepItems.Count==6&&wizard.SetupStepItems[0].IsCurrent,"Setup opens on the welcome step with six steps");
   void CaptureSetup(string name){var view=new MochiSprout.Views.SetupView{DataContext=wizard};view.Measure(new System.Windows.Size(1440,856));view.Arrange(new System.Windows.Rect(0,0,1440,856));view.UpdateLayout();System.Windows.Threading.Dispatcher.CurrentDispatcher.Invoke(()=>{},System.Windows.Threading.DispatcherPriority.ContextIdle);view.UpdateLayout();var bmp=new System.Windows.Media.Imaging.RenderTargetBitmap(1440,856,96,96,System.Windows.Media.PixelFormats.Pbgra32);bmp.Render(view);var enc=new System.Windows.Media.Imaging.PngBitmapEncoder();enc.Frames.Add(System.Windows.Media.Imaging.BitmapFrame.Create(bmp));using var stream=File.Create(Path.Combine(AppContext.BaseDirectory,name));enc.Save(stream);}
   CaptureSetup("Setup-1-bienvenida.png");
@@ -262,9 +265,13 @@ class Program
   Wait(wizard.SetupFinishCommand.ExecuteAsync(true));
   var setupPrefs=JsonSerializer.Deserialize<AppPreferences>(File.ReadAllText(Path.Combine(setupData,"preferences.json")))!;
   Check(!wizard.IsSetup&&!wizard.NeedsSetup&&openedEditor==true&&setupPrefs.SetupCompleted,"Finishing saves the setup and asks to open a new preset");
+  var presetsAfterSetup=wizard.Presets.Count;Wait(wizard.InitializeAsync());
+  Check(wizard.IsSetupCompleted()&&wizard.IsLoaded&&wizard.Presets.Count==presetsAfterSetup&&wizard.Packages.Count>0,"After setup the main app opens with everything loaded, without loading twice");
   Check(string.Equals(setupPrefs.VccRoot,Path.GetFullPath(vcc),StringComparison.OrdinalIgnoreCase)&&setupPrefs.ShowPrerelease,"Chosen VCC folder and preferences are saved");
   Check(setupPrefs.HiddenInstalls.Contains(manualChoice.EditorPath,StringComparer.OrdinalIgnoreCase)&&!wizard.Installs.Any(i=>i.EditorPath==manualChoice.EditorPath)&&wizard.AllUnity.Any(c=>c.EditorPath==manualChoice.EditorPath&&!c.IsEnabled),"Unchecked Unity is kept but not offered in presets");
-  var setupAgain=new PresetController(new ProfileStore(setupData),new UnityDetectionService(),new RegisteredCatalogService(vcc),exporter,setupData);Wait(setupAgain.InitializeAsync());
+  var setupAgain=new PresetController(new ProfileStore(setupData),new UnityDetectionService(),new RegisteredCatalogService(vcc),exporter,setupData);
+  Check(setupAgain.IsSetupCompleted(),"A configured app goes straight to the main window");
+  Wait(setupAgain.InitializeAsync());
   Check(!setupAgain.NeedsSetup&&!setupAgain.Installs.Any(i=>i.EditorPath==manualChoice.EditorPath)&&setupAgain.AllUnity.Any(c=>c.EditorPath==manualChoice.EditorPath),"Next start skips the guide and remembers hidden installs");
   setupAgain.AllUnity.Single(c=>c.EditorPath==manualChoice.EditorPath).IsEnabled=true;
   Check(setupAgain.Installs.Any(i=>i.EditorPath==manualChoice.EditorPath),"Settings can offer a hidden install again");

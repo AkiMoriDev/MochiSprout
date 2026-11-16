@@ -99,7 +99,7 @@
   </UserControl.Resources>
 
   <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-    <Grid Margin="24,32">
+    <Grid x:Name="Frame" Margin="24,32">
       <Border x:Name="Card" MaxWidth="1080" MinHeight="600" VerticalAlignment="Center" Background="#151c26" BorderBrush="#263142" BorderThickness="1" CornerRadius="18">
         <Border.Effect>
           <DropShadowEffect Color="Black" Opacity="0.5" BlurRadius="60" ShadowDepth="20" Direction="270"/>

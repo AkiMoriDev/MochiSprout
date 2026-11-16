@@ -15,6 +15,8 @@ public partial class MainWindow : Window
  private bool closeReady;
  private IInputElement? editorOpener;
  private Views.UtilityWindow? utilityWindow;
+ /// <summary>Se viene de la configuración inicial con «Crear mi primer preset»: abrir el editor al cargar.</summary>
+ public bool OpenNewPresetOnLoad { get; set; }
  private Window DialogOwner => Application.Current?.Windows.OfType<Window>().FirstOrDefault(w=>w.IsActive) ?? this;
  public MainWindow(PresetController controller)
  {
@@ -29,20 +31,21 @@ public partial class MainWindow : Window
   controller.EditorRequested+=OnEditorRequested;controller.UtilityRequested+=OnUtilityRequested;
   controller.SetupRequested+=OnSetupRequested;controller.SetupClosed+=OnSetupClosed;
   Closed+=(_,_)=>{controller.SetupRequested-=OnSetupRequested;controller.SetupClosed-=OnSetupClosed;controller.PropertyChanged-=EditorVisibilityChanged;controller.SaveReviewRequested-=OnSaveReviewRequested;controller.ExportRequested-=OnExportRequested;controller.EditorRequested-=OnEditorRequested;controller.UtilityRequested-=OnUtilityRequested;};
-  Loaded+=async(_,_)=>{UpdateResponsiveLayout();await controller.InitializeAsync();if(controller.NeedsSetup)controller.BeginSetupCommand.Execute(null);};
+  // Primero se comprueba todo detrás de la pantalla de arranque; después se muestra la guía (primer inicio) o la biblioteca.
+  Loaded+=async(_,_)=>{UpdateResponsiveLayout();UpdateTitleActions();await controller.InitializeAsync();if(controller.NeedsSetup)controller.BeginSetupCommand.Execute(null);controller.IsStarting=false;UpdateTitleActions();if(OpenNewPresetOnLoad&&!controller.IsSetup){OpenNewPresetOnLoad=false;controller.NewPresetCommand.Execute(null);}};
   Closing+=async(_,e)=>{if(closeReady)return;e.Cancel=true;if(controller.IsBusy||controller.SaveReviewOpen)return;if(controller.IsEditor&&!CanDiscardEditor())return;try{await controller.SaveSessionAsync();}catch(Exception ex){controller.Status=$"No se pudo recordar la sesión: {ex.Message}";}finally{closeReady=true;Close();}};
  }
  private void OnPreviewKeyDown(object sender,KeyEventArgs e)
  {
   if(e.Key==Key.K&&Keyboard.Modifiers==ModifierKeys.Control&&!ModalOpen){PresetSearchInput.Focus();PresetSearchInput.SelectAll();e.Handled=true;return;}
   if(e.Key!=Key.Escape)return;
-  if(controller.IsSetup){e.Handled=true;return;}   // el primer inicio no se descarta con Esc: tiene «Configurar después»
+  if(controller.IsSetup||controller.IsStarting){e.Handled=true;return;}   // el primer inicio no se descarta con Esc: tiene «Configurar después»
   if(PackagesOverlay.Visibility==Visibility.Visible){ClosePackages(this,new RoutedEventArgs());e.Handled=true;return;}
   if(controller.IsEditor&&!controller.IsBusy&&!controller.SaveReviewOpen){RequestCloseEditor();e.Handled=true;return;}
   if(controller.TemplateDetailsOpen){controller.CloseTemplateDetailsCommand.Execute(null);e.Handled=true;return;}
   if(PresetSearchInput.IsKeyboardFocusWithin&&controller.PresetSearch.Length>0){controller.PresetSearch="";e.Handled=true;}
  }
- private bool ModalOpen=>controller.IsSetup||controller.IsEditor||PackagesOverlay.Visibility==Visibility.Visible||controller.TemplateDetailsOpen;
+ private bool ModalOpen=>controller.IsStarting||controller.IsSetup||controller.IsEditor||PackagesOverlay.Visibility==Visibility.Visible||controller.TemplateDetailsOpen;
  private void UpdateTitleActions(){var enabled=!ModalOpen;TitleActions.IsEnabled=enabled;SearchBox.IsEnabled=enabled;}
  private void UpdateResponsiveLayout()
  {

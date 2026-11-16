@@ -51,5 +51,19 @@ public partial class SetupView : UserControl
         e.Handled = true;
     }
 
+    /// <summary>
+    /// Cuando el asistente es el contenido de su propia ventana: la tarjeta ocupa todo,
+    /// sin margen, sombra ni esquinas, para que no quede una ventana dentro de otra.
+    /// </summary>
+    public void FillWindow()
+    {
+        Background = Card.Background;
+        Frame.Margin = new Thickness(0);
+        Card.MaxWidth = double.PositiveInfinity; Card.MinHeight = 0;
+        Card.VerticalAlignment = VerticalAlignment.Stretch;
+        Card.BorderThickness = new Thickness(0); Card.CornerRadius = new CornerRadius(0); Card.Effect = null;
+        Rail.CornerRadius = new CornerRadius(0);
+    }
+
     public void FocusPrimary() => Dispatcher.BeginInvoke(new Action(() => NextButton.Focus()));
 }

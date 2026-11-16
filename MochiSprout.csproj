@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+ <PropertyGroup><OutputType>WinExe</OutputType><TargetFramework>net8.0-windows</TargetFramework><RootNamespace>MochiSprout</RootNamespace><AssemblyName>MochiSprout</AssemblyName><Version>1.1.0</Version><Product>MochiSprout</Product><Company>Akimorivt Systems</Company><Copyright>Copyright (c) 2026 Aki</Copyright><Nullable>enable</Nullable><ImplicitUsings>enable</ImplicitUsings><UseWPF>true</UseWPF>
+  <!-- La app vive en la raíz del repo: que no tome el código de las pruebas ni las publicaciones locales. -->
+  <DefaultItemExcludes>$(DefaultItemExcludes);Verification\**;publish\**;docs\**;dist\**;artifacts\**</DefaultItemExcludes></PropertyGroup>
+ <ItemGroup><PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2"/><PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.9"/></ItemGroup>
+
+<ItemGroup><EmbeddedResource Include="Resources\UnityPackageAutoImporter.cs.txt" LogicalName="MochiSprout.UnityPackageAutoImporter" WithCulture="false" /></ItemGroup>
+</Project>
+
+
+

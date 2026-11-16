@@ -72,29 +72,62 @@ public partial class PresetController : ObservableObject
         Presets.CollectionChanged += (_, _) => { NotifyPresetCounts(); PresetStamp++; };
         Packages.CollectionChanged += (_, _) => OnPropertyChanged(nameof(CatalogEnvTitle));
     }
+    /// <summary>
+    /// Lectura rápida al arrancar, sin buscar VCC ni Unity: indica si la configuración inicial ya se completó.
+    /// Decide qué se abre primero: la app principal o la ventana de configuración inicial.
+    /// </summary>
+    public bool IsSetupCompleted()
+    {
+        try { return File.Exists(PreferencesFile) && JsonSerializer.Deserialize<AppPreferences>(File.ReadAllText(PreferencesFile))?.SetupCompleted == true; }
+        catch (Exception) { return false; }   // preferencias dañadas: se vuelve a configurar
+    }
+    /// <summary>Ya se cargaron preferencias, presets y fuentes (por el arranque normal o al terminar la configuración inicial).</summary>
+    public bool IsLoaded { get; private set; }
+    private bool localDataLoaded;
+    /// <summary>Preferencias y presets guardados, sin buscar VCC ni Unity. Se hace una sola vez.</summary>
+    private async Task LoadLocalDataAsync()
+    {
+        if (localDataLoaded) return;
+        if (File.Exists(PreferencesFile))
+        {
+            var prefs = JsonSerializer.Deserialize<AppPreferences>(await File.ReadAllTextAsync(PreferencesFile));
+            if (prefs is not null)
+            {
+                savedPreferences = prefs; vccRoot = prefs.VccRoot;
+                RememberLastPage = prefs.RememberLastPage; ShowPrerelease = prefs.ShowPrerelease;
+                Page = "Presets";
+                foreach (var i in prefs.ManualInstalls) if (File.Exists(i.EditorPath)) Installs.Add(i);
+                hiddenInstalls = new HashSet<string>(prefs.HiddenInstalls ?? [], StringComparer.OrdinalIgnoreCase);
+            }
+        }
+        foreach (var p in await store.LoadAsync()) Presets.Add(p);
+        OnPropertyChanged(nameof(PresetCount)); OnPropertyChanged(nameof(VccRoot));
+        VccPathDraft = vccRoot;
+        localDataLoaded = true;
+    }
+    /// <summary>Prepara la configuración inicial: solo datos locales; la guía busca VCC y Unity en sus propios pasos.</summary>
+    public async Task PrepareSetupAsync()
+    {
+        IsBusy = true;
+        try { await LoadLocalDataAsync(); }
+        catch (Exception ex) { Status = $"No se pudo cargar: {ex.Message}"; }
+        finally { IsBusy = false; }
+        BeginSetupCommand.Execute(null);
+    }
     public async Task InitializeAsync()
     {
+        if (IsLoaded) return;
         IsBusy = true;
         try
         {
-            if (File.Exists(PreferencesFile))
-            {
-                var prefs = JsonSerializer.Deserialize<AppPreferences>(await File.ReadAllTextAsync(PreferencesFile));
-                if (prefs is not null)
-                {
-                    savedPreferences = prefs; vccRoot = prefs.VccRoot;
-                    RememberLastPage = prefs.RememberLastPage; ShowPrerelease = prefs.ShowPrerelease;
-                    Page = "Presets";
-                    foreach (var i in prefs.ManualInstalls) if (File.Exists(i.EditorPath)) Installs.Add(i);
-                    hiddenInstalls = new HashSet<string>(prefs.HiddenInstalls ?? [], StringComparer.OrdinalIgnoreCase);
-                }
-            }
-            foreach (var p in await store.LoadAsync()) Presets.Add(p);
-            OnPropertyChanged(nameof(PresetCount)); OnPropertyChanged(nameof(VccRoot));
+            StartupMessage = "Leyendo tus preferencias y presets…";
+            await LoadLocalDataAsync();
+            StartupMessage = "Buscando VRChat Creator Companion y Unity…";
             await RefreshSourcesCoreAsync();
             VccPathDraft = vccRoot;
             Page = "Presets";
             NeedsSetup = !savedPreferences.SetupCompleted;
+            IsLoaded = true;
         }
         catch (Exception ex) { Status = $"No se pudo cargar: {ex.Message}"; }
         finally { IsBusy = false; }

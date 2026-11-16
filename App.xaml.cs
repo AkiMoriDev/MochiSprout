@@ -23,7 +23,21 @@ public partial class App : Application
         services.AddSingleton<PresetController>();
         services.AddSingleton<MainWindow>();
         provider = services.BuildServiceProvider();
-        provider.GetRequiredService<MainWindow>().Show();
+        // Primero se valida si la configuración inicial ya se hizo (solo lee preferences.json, sin buscar VCC ni Unity).
+        // Hecha: se abre la app principal. Pendiente: se abre la ventana de configuración inicial y, al terminarla, la app principal.
+        var controller = provider.GetRequiredService<PresetController>();
+        if (controller.IsSetupCompleted()) { ShowMainWindow(openNewPreset: false); return; }
+        var setup = new Views.SetupWindow(controller);
+        setup.Completed += (_, createPreset) => { ShowMainWindow(createPreset); setup.Close(); };
+        MainWindow = setup;
+        setup.Show();
+    }
+    private void ShowMainWindow(bool openNewPreset)
+    {
+        var main = provider!.GetRequiredService<MainWindow>();
+        main.OpenNewPresetOnLoad = openNewPreset;
+        MainWindow = main;
+        main.Show();
     }
     protected override void OnExit(ExitEventArgs e) { provider?.Dispose(); base.OnExit(e); }
 }

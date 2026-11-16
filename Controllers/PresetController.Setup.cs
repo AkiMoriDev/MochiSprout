@@ -82,6 +82,9 @@ public partial class PresetController
     public event EventHandler? SetupRequested;
     public event EventHandler<bool>? SetupClosed;   // true: abrir el editor de un preset nuevo
 
+    /// <summary>La app está comprobando datos, VCC y Unity: se muestra la pantalla de arranque en lugar de la biblioteca.</summary>
+    [ObservableProperty] private bool isStarting = true;
+    [ObservableProperty] private string startupMessage = "Preparando MochiSprout…";
     [ObservableProperty] private bool needsSetup;
     [ObservableProperty] private bool isSetup;
     [ObservableProperty] private int setupStep;
@@ -308,6 +311,7 @@ public partial class PresetController
             savedPreferences.SetupCompleted = true;
             await SavePreferencesAsync();
             await RefreshSourcesCoreAsync();
+            IsLoaded = true;
             NeedsSetup = false; IsSetup = false;
             Status = "Configuración inicial guardada.";
         }
