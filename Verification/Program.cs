@@ -30,10 +30,15 @@ class Program
   Check(new RegisteredCatalogService(Path.Combine(root,"absent")).Load().Messages.Count==1,"Missing VCC is actionable");
   File.WriteAllText(Path.Combine(vcc,"Repos","broken.json"),"invalid");
   var legacyData=Path.Combine(root,"LegacyData");Directory.CreateDirectory(legacyData);File.WriteAllText(Path.Combine(legacyData,"profiles.json"),"{}");File.WriteAllText(Path.Combine(legacyData,"exported-templates.json"),"{}");
-  var newData=Path.Combine(root,"Akimorivt Systems","MochiSprout");
+  var newData=Path.Combine(root,"AkiMoriDev Collection","MochiSprout");
   Check(AppDataPaths.MigrateLegacyData(newData,legacyData)&&File.Exists(Path.Combine(newData,"profiles.json"))&&File.Exists(Path.Combine(newData,"exported-templates.json"))&&File.Exists(Path.Combine(legacyData,"profiles.json")),"Legacy data is copied to the new folder and kept in place");
   File.WriteAllText(Path.Combine(newData,"profiles.json"),"{\"kept\":true}");Check(!AppDataPaths.MigrateLegacyData(newData,legacyData)&&File.ReadAllText(Path.Combine(newData,"profiles.json")).Contains("kept"),"Migration never overwrites data already in the new folder");
-  Check(AppDataPaths.Root.EndsWith(Path.Combine("Akimorivt Systems","MochiSprout")),"Default data folder is Akimorivt Systems/MochiSprout");
+  Check(AppDataPaths.Root.EndsWith(Path.Combine("AkiMoriDev Collection","MochiSprout")),"Default data folder is AkiMoriDev Collection/MochiSprout");
+  var previousData=Path.Combine(root,"Akimorivt Systems","MochiSprout");Directory.CreateDirectory(previousData);
+  File.WriteAllText(Path.Combine(previousData,"preferences.json"),"{\"SetupCompleted\":true}");File.WriteAllText(Path.Combine(previousData,"profiles.json"),"{}");
+  var movedData=Path.Combine(root,"Moved","AkiMoriDev Collection","MochiSprout");
+  Check(AppDataPaths.MigratePreviousRoot(movedData,previousData)&&File.ReadAllText(Path.Combine(movedData,"preferences.json")).Contains("SetupCompleted")&&File.Exists(Path.Combine(previousData,"preferences.json")),"Data from Akimorivt Systems is copied with its preferences and the old folder stays");
+  Check(!AppDataPaths.MigratePreviousRoot(movedData,previousData),"Data folder is only migrated once");
   var store=new ProfileStore(Path.Combine(root,"Data"));
   var editor=Path.Combine(root,"Unity.exe");File.WriteAllText(editor,"test fixture");
   var profile=new ProjectProfile{Id="test",DisplayName="Avatar Test",Target=UnityTarget.Other,UnityVersion="6000.0.10f1",UnityEditorPath=editor,Packages=[new(){Id="com.example.tool",Version="1.2.0",RepositoryId="tools"}],Repositories=[new(){Id="tools",DisplayName="Creator Tools",Url="https://example.invalid/index.json"}]};

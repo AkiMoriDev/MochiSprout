@@ -13,6 +13,9 @@ public partial class App : Application
     protected override void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
+        // Los datos pasaron de "Akimorivt Systems" a "AkiMoriDev Collection": se copian una vez y la carpeta anterior queda.
+        try { AppDataPaths.MigratePreviousRoot(); }
+        catch (Exception ex) when (ex is System.IO.IOException or UnauthorizedAccessException) { }
         // Los presets de VCC Preset Studio se traen desde el asistente de primer inicio, si el usuario lo elige.
         var services = new ServiceCollection();
         services.AddSingleton<IProfileStore, ProfileStore>();

@@ -54,9 +54,11 @@ El script usa solo C# 4 y accede por reflexión a las APIs del Editor que cambia
 
 | Qué | Dónde |
 |---|---|
-| Presets, preferencias y registro de plantillas exportadas | `%LocalAppData%\Akimorivt Systems\MochiSprout` |
+| Presets, preferencias y registro de plantillas exportadas | `%LocalAppData%\AkiMoriDev Collection\MochiSprout` |
 | Plantillas exportadas | `%LocalAppData%\VRChatCreatorCompanion\Templates` |
 | Estado de importación de cada proyecto | `ProjectSettings/MochiSproutImportState.json` dentro del proyecto de Unity |
+
+Hasta la versión 1.1.0 los datos estaban en `%LocalAppData%\Akimorivt Systems\MochiSprout`. Al abrir una versión nueva se copian solos a la carpeta actual (presets, preferencias y plantillas exportadas) y la carpeta anterior queda como respaldo.
 
 Si venís de VCC Preset Studio (el nombre anterior de la app), la guía de primer inicio ofrece traer tus presets desde `%LocalAppData%\VCCPresetStudio` (la carpeta anterior no se borra). Los proyectos de Unity preparados con la versión anterior se actualizan solos al volver a prepararlos: se reemplaza el importador viejo y se conserva su registro de importaciones.
 

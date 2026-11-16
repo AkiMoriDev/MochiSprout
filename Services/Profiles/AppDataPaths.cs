@@ -2,13 +2,22 @@ using System.IO;
 namespace MochiSprout.Services.Profiles;
 
 /// <summary>
-/// Carpeta de datos de la app: %LocalAppData%\Akimorivt Systems\MochiSprout.
+/// Carpeta de datos de la app: %LocalAppData%\AkiMoriDev Collection\MochiSprout.
 /// Contiene profiles.json, preferences.json y exported-templates.json.
 /// </summary>
 public static class AppDataPaths
 {
     private static string LocalAppData => Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-    public static string Root => Path.Combine(LocalAppData, "Akimorivt Systems", "MochiSprout");
+    public static string Root => Path.Combine(LocalAppData, "AkiMoriDev Collection", "MochiSprout");
+    /// <summary>Carpeta de MochiSprout hasta la versión 1.1.0. Se conserva intacta como respaldo.</summary>
+    public static string PreviousRoot => Path.Combine(LocalAppData, "Akimorivt Systems", "MochiSprout");
+
+    /// <summary>
+    /// Trae todo (presets, preferencias y plantillas exportadas) de la carpeta usada hasta la 1.1.0, para que
+    /// quien ya configuró la app no tenga que repetir la guía. Solo si la carpeta nueva todavía no tiene datos.
+    /// </summary>
+    public static bool MigratePreviousRoot(string? root = null, string? previousRoot = null) =>
+        MigrateLegacyData(root ?? Root, previousRoot ?? PreviousRoot);
     /// <summary>Ubicación anterior (VCC Preset Studio). Se conserva intacta como respaldo.</summary>
     public static string LegacyRoot => Path.Combine(LocalAppData, "VCCPresetStudio");
 
